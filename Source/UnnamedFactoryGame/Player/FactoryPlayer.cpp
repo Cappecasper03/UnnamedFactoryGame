@@ -2,6 +2,7 @@
 
 #include "FactoryPlayer.h"
 
+#include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "FactoryPlayerController.h"
@@ -14,6 +15,9 @@
 AFactoryPlayer::AFactoryPlayer()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	CameraComponent = CreateDefaultSubobject< UCameraComponent >( FName( "CameraComponent" ) );
+	RootComponent   = CameraComponent;
 
 	MovementComponent = CreateDefaultSubobject< UPawnMovementComponent, UFloatingPawnMovement >( FName( "MovementComponent" ) );
 }
@@ -49,6 +53,7 @@ void AFactoryPlayer::SetupPlayerInputComponent( UInputComponent* PlayerInputComp
 	Input->BindAction( MoveUpDownAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::MoveUpDownInput );
 	Input->BindAction( LookRightLeftAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::LookRightLeftInput );
 	Input->BindAction( LookUpDownAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::LookUpDownInput );
+	Input->BindAction( ChangeSpeedAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::ChangeSpeedInput );
 }
 
 AFactoryPlayer* AFactoryPlayer::Get( const UObject* WorldContextObject )
@@ -68,7 +73,7 @@ void AFactoryPlayer::MoveForwardBackwardInput( const FInputActionInstance& Insta
 
 	FRotator const ControlSpaceRot = GetController()->GetControlRotation();
 
-	AddMovementInput( FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::X ), Value );
+	AddMovementInput( FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::X ), Value * SpeedMultiplier );
 }
 
 void AFactoryPlayer::MoveRightLeftInput( const FInputActionInstance& Instance )
@@ -80,7 +85,7 @@ void AFactoryPlayer::MoveRightLeftInput( const FInputActionInstance& Instance )
 
 	FRotator const ControlSpaceRot = GetController()->GetControlRotation();
 
-	AddMovementInput( FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::Y ), Value );
+	AddMovementInput( FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::Y ), Value * SpeedMultiplier );
 }
 
 void AFactoryPlayer::MoveUpDownInput( const FInputActionInstance& Instance )
@@ -90,7 +95,7 @@ void AFactoryPlayer::MoveUpDownInput( const FInputActionInstance& Instance )
 	if( Value == 0 )
 		return;
 
-	AddMovementInput( FVector::UpVector, Value );
+	AddMovementInput( FVector::UpVector, Value * SpeedMultiplier );
 }
 
 void AFactoryPlayer::LookRightLeftInput( const FInputActionInstance& Instance )
@@ -111,4 +116,12 @@ void AFactoryPlayer::LookUpDownInput( const FInputActionInstance& Instance )
 		return;
 
 	AddControllerPitchInput( Value * MouseSensitivity );
+}
+
+void AFactoryPlayer::ChangeSpeedInput( const FInputActionInstance& Instance )
+{
+	const float Value = Instance.GetValue().Get< float >();
+
+	SpeedMultiplier += Value / 10;
+	SpeedMultiplier  = FMath::Clamp( SpeedMultiplier, .1f, 1 );
 }

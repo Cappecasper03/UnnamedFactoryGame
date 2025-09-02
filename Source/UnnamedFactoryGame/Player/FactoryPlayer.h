@@ -10,6 +10,7 @@
 
 class UInputAction;
 class UInputMappingContext;
+class UCameraComponent;
 
 UCLASS()
 class UNNAMEDFACTORYGAME_API AFactoryPlayer : public APawn
@@ -33,6 +34,10 @@ protected:
 	void MoveUpDownInput( const FInputActionInstance& Instance );
 	void LookRightLeftInput( const FInputActionInstance& Instance );
 	void LookUpDownInput( const FInputActionInstance& Instance );
+	void ChangeSpeedInput( const FInputActionInstance& Instance );
+
+	UPROPERTY( EditDefaultsOnly, Category = "Camera" )
+	TObjectPtr< UCameraComponent > CameraComponent;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Input|Context" )
 	TObjectPtr< UInputMappingContext > InputMapping;
@@ -47,10 +52,14 @@ protected:
 	TObjectPtr< UInputAction > LookRightLeftAction;
 	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
 	TObjectPtr< UInputAction > LookUpDownAction;
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
+	TObjectPtr< UInputAction > ChangeSpeedAction;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Input|Sensitivity" )
 	float MouseSensitivity = .45f;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Movement" )
 	TObjectPtr< UPawnMovementComponent > MovementComponent;
+
+	float SpeedMultiplier = .2f;
 };
