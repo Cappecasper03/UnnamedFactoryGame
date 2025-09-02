@@ -27,10 +27,10 @@ float AChunk::StaticNoiseScale = 0;
 
 AChunk::AChunk()
 {
+	PrimaryActorTick.bCanEverTick = false;
+
 	RootComponent  = CreateDefaultSubobject< USceneComponent >( FName( "RootComponent" ) );
 	ProceduralMesh = CreateDefaultSubobject< UProceduralMeshComponent >( FName( "ProceduralMesh" ) );
-
-	PrimaryActorTick.bCanEverTick = true;
 
 	StaticSize       = Size;
 	StaticHeight     = Height;

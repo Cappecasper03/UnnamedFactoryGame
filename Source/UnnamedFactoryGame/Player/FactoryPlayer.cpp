@@ -54,6 +54,8 @@ void AFactoryPlayer::SetupPlayerInputComponent( UInputComponent* PlayerInputComp
 	Input->BindAction( LookRightLeftAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::LookRightLeftInput );
 	Input->BindAction( LookUpDownAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::LookUpDownInput );
 	Input->BindAction( ChangeSpeedAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::ChangeSpeedInput );
+
+	Input->BindAction( ToggleInteractiveModeAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::ToggleInteractiveModeInput );
 }
 
 AFactoryPlayer* AFactoryPlayer::Get( const UObject* WorldContextObject )
@@ -68,19 +70,26 @@ void AFactoryPlayer::MoveForwardBackwardInput( const FInputActionInstance& Insta
 {
 	const float Value = Instance.GetValue().Get< float >();
 
-	if( Value == 0 || !GetController() )
+	if( !GetController() )
 		return;
 
 	FRotator const ControlSpaceRot = GetController()->GetControlRotation();
+	FVector        Direction       = FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::X );
 
-	AddMovementInput( FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::X ), Value * SpeedMultiplier );
+	if( IsInteractiveMode )
+	{
+		Direction.Z = 0;
+		Direction.Normalize();
+	}
+
+	AddMovementInput( Direction, Value * SpeedMultiplier );
 }
 
 void AFactoryPlayer::MoveRightLeftInput( const FInputActionInstance& Instance )
 {
 	const float Value = Instance.GetValue().Get< float >();
 
-	if( Value == 0 || !GetController() )
+	if( !GetController() )
 		return;
 
 	FRotator const ControlSpaceRot = GetController()->GetControlRotation();
@@ -92,28 +101,25 @@ void AFactoryPlayer::MoveUpDownInput( const FInputActionInstance& Instance )
 {
 	const float Value = Instance.GetValue().Get< float >();
 
-	if( Value == 0 )
-		return;
-
 	AddMovementInput( FVector::UpVector, Value * SpeedMultiplier );
 }
 
 void AFactoryPlayer::LookRightLeftInput( const FInputActionInstance& Instance )
 {
-	const float Value = Instance.GetValue().Get< float >();
-
-	if( Value == 0 )
+	if( IsInteractiveMode )
 		return;
+
+	const float Value = Instance.GetValue().Get< float >();
 
 	AddControllerYawInput( Value * MouseSensitivity );
 }
 
 void AFactoryPlayer::LookUpDownInput( const FInputActionInstance& Instance )
 {
-	const float Value = Instance.GetValue().Get< float >();
-
-	if( Value == 0 )
+	if( IsInteractiveMode )
 		return;
+
+	const float Value = Instance.GetValue().Get< float >();
 
 	AddControllerPitchInput( Value * MouseSensitivity );
 }
@@ -124,4 +130,29 @@ void AFactoryPlayer::ChangeSpeedInput( const FInputActionInstance& Instance )
 
 	SpeedMultiplier += Value / 10;
 	SpeedMultiplier  = FMath::Clamp( SpeedMultiplier, .1f, 1 );
+}
+
+void AFactoryPlayer::ToggleInteractiveModeInput()
+{
+	IsInteractiveMode = !IsInteractiveMode;
+
+	AFactoryPlayerController* PlayerController = Cast< AFactoryPlayerController >( GetController() );
+	if( !IsValid( PlayerController ) )
+		return;
+
+	PlayerController->SetShowMouseCursor( IsInteractiveMode );
+
+	int32 ViewportSizeX, ViewportSizeY;
+	PlayerController->GetViewportSize( ViewportSizeX, ViewportSizeY );
+	PlayerController->SetMouseLocation( ViewportSizeX / 2, ViewportSizeY / 2 );
+
+	if( IsInteractiveMode )
+	{
+		FInputModeGameAndUI InputMode;
+		InputMode.SetHideCursorDuringCapture( false );
+		InputMode.SetLockMouseToViewportBehavior( EMouseLockMode::DoNotLock );
+		PlayerController->SetInputMode( InputMode );
+	}
+	else
+		PlayerController->SetInputMode( FInputModeGameOnly() );
 }

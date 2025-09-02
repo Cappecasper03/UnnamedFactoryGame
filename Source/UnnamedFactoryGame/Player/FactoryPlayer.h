@@ -36,24 +36,29 @@ protected:
 	void LookUpDownInput( const FInputActionInstance& Instance );
 	void ChangeSpeedInput( const FInputActionInstance& Instance );
 
+	void ToggleInteractiveModeInput();
+
 	UPROPERTY( EditDefaultsOnly, Category = "Camera" )
 	TObjectPtr< UCameraComponent > CameraComponent;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Input|Context" )
 	TObjectPtr< UInputMappingContext > InputMapping;
 
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
 	TObjectPtr< UInputAction > MoveForwardBackwardAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
 	TObjectPtr< UInputAction > MoveRightLeftAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
 	TObjectPtr< UInputAction > MoveUpDownAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
 	TObjectPtr< UInputAction > LookRightLeftAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
 	TObjectPtr< UInputAction > LookUpDownAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
 	TObjectPtr< UInputAction > ChangeSpeedAction;
+
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Mode" )
+	TObjectPtr< UInputAction > ToggleInteractiveModeAction;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Input|Sensitivity" )
 	float MouseSensitivity = .45f;
@@ -61,5 +66,7 @@ protected:
 	UPROPERTY( EditDefaultsOnly, Category = "Movement" )
 	TObjectPtr< UPawnMovementComponent > MovementComponent;
 
-	float SpeedMultiplier = .2f;
+	float SpeedMultiplier = .5f;
+
+	bool IsInteractiveMode = false;
 };
