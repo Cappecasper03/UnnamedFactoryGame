@@ -1,0 +1,40 @@
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "Chunk.h"
+#include "CoreMinimal.h"
+#include "Subsystems/WorldSubsystem.h"
+
+#include "WorldGenerationSubSystem.generated.h"
+
+/**
+ * 
+ */
+UCLASS()
+class UNNAMEDFACTORYGAME_API UWorldGenerationSubSystem : public UTickableWorldSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	UWorldGenerationSubSystem();
+
+	static UWorldGenerationSubSystem* Get( const UObject* WorldContextObject ) { return WorldContextObject->GetWorld()->GetSubsystem< UWorldGenerationSubSystem >(); }
+
+	virtual TStatId GetStatId() const override { return TStatId(); }
+
+	virtual void Tick( float DeltaTime ) override;
+
+	AChunk* GetChunk( const FVector& WorldLocation );
+	bool    GetVoxel( const FVector& WorldLocation, FHexagonVoxel& OutVoxel );
+
+protected:
+	void GenerateChunk( FIntPoint Chunk );
+
+	TMap< FIntPoint, TObjectPtr< AChunk > > Chunks;
+
+	UPROPERTY()
+	TSubclassOf< AChunk > ChunkClass;
+
+	int GenerationDistance = 8;
+};
