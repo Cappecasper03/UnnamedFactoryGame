@@ -7,7 +7,7 @@
 
 UWorldGenerationSubSystem::UWorldGenerationSubSystem()
 {
-	const ConstructorHelpers::FClassFinder< AChunk > ClassFinder( TEXT( "/Game/Blueprints/WorldGeneration/Chunk_BP" ) );
+	const ConstructorHelpers::FClassFinder< AChunk > ClassFinder( TEXT( "/Game/Blueprints/World/Generation/Chunk_BP" ) );
 	ChunkClass = ClassFinder.Class;
 }
 
@@ -30,19 +30,43 @@ void UWorldGenerationSubSystem::Tick( const float DeltaTime )
 AChunk* UWorldGenerationSubSystem::GetChunk( const FVector& WorldLocation )
 {
 	const FIntPoint Chunk = AChunk::WorldToChunk( WorldLocation );
-	if( !Chunks.Contains( Chunk ) )
+	return GetChunk( Chunk );
+}
+
+AChunk* UWorldGenerationSubSystem::GetChunk( const FIntVector3& VoxelCoordinate )
+{
+	const FIntPoint Chunk = AChunk::VoxelToChunk( VoxelCoordinate );
+	return GetChunk( Chunk );
+}
+
+AChunk* UWorldGenerationSubSystem::GetChunk( const FIntPoint& ChunkCoordinate )
+{
+	TObjectPtr< AChunk >* Chunk = Chunks.Find( ChunkCoordinate );
+	if( !Chunk )
 		return nullptr;
 
-	return Chunks[ Chunk ];
+	return *Chunk;
 }
 
 bool UWorldGenerationSubSystem::GetVoxel( const FVector& WorldLocation, FHexagonVoxel& OutVoxel )
 {
-	const FIntPoint Chunk = AChunk::WorldToChunk( WorldLocation );
-	if( !Chunks.Contains( Chunk ) )
+	const AChunk* Chunk = GetChunk( WorldLocation );
+	if( !IsValid( Chunk ) )
 		return false;
 
-	if( !Chunks[ Chunk ]->GetVoxel( AChunk::WorldToVoxel( WorldLocation ), OutVoxel ) )
+	if( !Chunk->GetVoxel( AChunk::WorldToVoxel( WorldLocation ), OutVoxel ) )
+		return false;
+
+	return true;
+}
+
+bool UWorldGenerationSubSystem::GetVoxel( const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel )
+{
+	const AChunk* Chunk = GetChunk( VoxelCoordinate );
+	if( !IsValid( Chunk ) )
+		return false;
+
+	if( !Chunk->GetVoxel( VoxelCoordinate, OutVoxel ) )
 		return false;
 
 	return true;

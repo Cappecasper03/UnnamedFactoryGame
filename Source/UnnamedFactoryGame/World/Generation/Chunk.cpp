@@ -7,20 +7,6 @@
 #include "ProceduralMeshComponent.h"
 #include "WorldPartition/WorldPartition.h"
 
-static constexpr float HexagonRadius = 50;
-static constexpr float HexagonHeight = 100;
-static const float     Root3         = FMath::Sqrt( 3.0f );
-static const float     Root3Divided2 = Root3 / 2;
-
-FHexagonVoxel::FHexagonVoxel( const FHexagonVoxelCoordinate& Coordinate )
-{
-	GridLocation = Coordinate;
-
-	WorldLocation.X = HexagonRadius * ( 1.5f * Coordinate.Q );
-	WorldLocation.Y = HexagonRadius * ( Root3 * Coordinate.R + Root3Divided2 * Coordinate.Q );
-	WorldLocation.Z = HexagonHeight * Coordinate.Z;
-}
-
 int   AChunk::StaticSize       = 0;
 int   AChunk::StaticHeight     = 0;
 float AChunk::StaticNoiseScale = 0;
@@ -39,61 +25,9 @@ AChunk::AChunk()
 
 void AChunk::Generate( const FIntPoint& ChunkCoordinate )
 {
-	HexagonTiles.Empty();
 	Coordinate = ChunkCoordinate;
 
-	const int QOffset = Coordinate.X * Size;
-	const int ROffset = Coordinate.Y * Size;
-
-	for( int Q = 0; Q < Size; ++Q )
-	{
-		for( int R = 0; R < Size; ++R )
-		{
-			const float PerlinNoise = FMath::PerlinNoise2D( FVector2D( Q + QOffset, R + ROffset ) * NoiseScale );
-			const int64 TileHeight  = FMath::RoundToInt( FMath::GetMappedRangeValueClamped( FVector2D( -1.0f, 1.0f ), FVector2D( 0, Height ), PerlinNoise ) );
-
-			for( int Z = 0; Z < TileHeight; ++Z )
-			{
-				FHexagonVoxelCoordinate VoxelCoordinate = { Q + QOffset, R + ROffset, Z };
-				FHexagonVoxel           Voxel( VoxelCoordinate );
-				HexagonTiles.Add( VoxelCoordinate, Voxel );
-			}
-		}
-	}
-
-	TArray< FVector >                Vertices;
-	TArray< int32 >                  Triangles;
-	TArray< FVector >                Normals;
-	TArray< FVector2D >              UVs;
-	const TArray< FLinearColor >     VertexColors;
-	const TArray< FProcMeshTangent > Tangents;
-
-	const TArray Directions = { FIntPoint( 1, -1 ), FIntPoint( 1, 0 ), FIntPoint( 0, 1 ), FIntPoint( -1, 1 ), FIntPoint( -1, 0 ), FIntPoint( 0, -1 ) };
-
-	for( const TPair< FHexagonVoxelCoordinate, FHexagonVoxel >& HexagonTile: HexagonTiles )
-	{
-		const FHexagonVoxel&           Voxel           = HexagonTile.Value;
-		const FHexagonVoxelCoordinate& VoxelCoordinate = Voxel.GridLocation;
-
-		const FHexagonVoxelCoordinate TopCoordinate{ VoxelCoordinate.Q, VoxelCoordinate.R, VoxelCoordinate.Z + 1 };
-		if( !HexagonTiles.Contains( TopCoordinate ) )
-			CreateHexagonTop( Voxel, Vertices, Triangles, Normals, UVs );
-
-		const FHexagonVoxelCoordinate BottomCoordinate{ VoxelCoordinate.Q, VoxelCoordinate.R, VoxelCoordinate.Z - 1 };
-		if( !HexagonTiles.Contains( BottomCoordinate ) )
-			CreateHexagonBottom( Voxel, Vertices, Triangles, Normals, UVs );
-
-		for( int i = 0; i < 6; ++i )
-		{
-			const FIntPoint               Direction = Directions[ i ];
-			const FHexagonVoxelCoordinate SideCoordinate{ VoxelCoordinate.Q + Direction.X, VoxelCoordinate.R + Direction.Y, VoxelCoordinate.Z };
-			if( !HexagonTiles.Contains( SideCoordinate ) )
-				CreateHexagonSide( VoxelCoordinate, i, Vertices, Triangles, Normals, UVs );
-		}
-	}
-
-	if( !Vertices.IsEmpty() )
-		ProceduralMesh->CreateMeshSection_LinearColor( 0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, true );
+	GenerateVoxels();
 }
 
 void AChunk::SetVisible()
@@ -102,21 +36,9 @@ void AChunk::SetVisible()
 	GetWorld()->GetTimerManager().SetTimer( VisibilityTimer, [ this ] { ProceduralMesh->SetVisibility( false ); }, 1, false );
 }
 
-bool AChunk::GetVoxel( const FHexagonVoxelCoordinate& VoxelCoordinate, FHexagonVoxel& OutVoxel )
-{
-	if( !HexagonTiles.Contains( VoxelCoordinate ) )
-		return false;
+FVector AChunk::ChunkToWorld( const FIntPoint& ChunkCoordinate ) { return VoxelToWorld( FIntVector3( ChunkCoordinate.X * StaticSize, ChunkCoordinate.Y * StaticSize, 0 ) ); }
 
-	OutVoxel = HexagonTiles[ VoxelCoordinate ];
-	return true;
-}
-
-FVector AChunk::ChunkToWorld( const FIntPoint& ChunkCoordinate )
-{
-	return VoxelToWorld( FHexagonVoxelCoordinate( ChunkCoordinate.X * StaticSize, ChunkCoordinate.Y * StaticSize, 0 ) );
-}
-
-FHexagonVoxelCoordinate AChunk::WorldToVoxel( const FVector& WorldLocation )
+FIntVector3 AChunk::WorldToVoxel( const FVector& WorldLocation )
 {
 	static constexpr float TwoThirds     = 2.f / 3.f;
 	static constexpr float NegativeThird = -1.f / 3.f;
@@ -141,24 +63,106 @@ FHexagonVoxelCoordinate AChunk::WorldToVoxel( const FVector& WorldLocation )
 	else if( RDiff > SDiff )
 		FinalR = -FinalQ - FMath::RoundToInt( -QFloat - RFloat );
 
-	FHexagonVoxelCoordinate Coordinate;
-	Coordinate.Q = FinalQ;
-	Coordinate.R = FinalR;
+	FIntVector3 Coordinate;
+	Coordinate.X = FinalQ;
+	Coordinate.Y = FinalR;
 	Coordinate.Z = FMath::RoundToInt( WorldLocation.Z / HexagonHeight );
 	return Coordinate;
 }
 
-FIntPoint AChunk::VoxelToChunk( const FHexagonVoxelCoordinate& VoxelCoordinate )
+FIntPoint AChunk::VoxelToChunk( const FIntVector3& VoxelCoordinate )
 {
-	const int32 X = FMath::FloorToInt( static_cast< float >( VoxelCoordinate.Q ) / StaticSize );
-	const int32 Y = FMath::FloorToInt( static_cast< float >( VoxelCoordinate.R ) / StaticSize );
+	const int32 X = FMath::FloorToInt( static_cast< float >( VoxelCoordinate.X ) / StaticSize );
+	const int32 Y = FMath::FloorToInt( static_cast< float >( VoxelCoordinate.Y ) / StaticSize );
 	return FIntPoint( X, Y );
 }
 
 FIntPoint AChunk::WorldToChunk( const FVector& WorldLocation )
 {
-	const FHexagonVoxelCoordinate VoxelCoordinate = WorldToVoxel( WorldLocation );
+	const FIntVector3 VoxelCoordinate = WorldToVoxel( WorldLocation );
 	return VoxelToChunk( VoxelCoordinate );
+}
+
+void AChunk::GenerateVoxels()
+{
+	HexagonTiles.Empty();
+	ProceduralMesh->ClearAllMeshSections();
+
+	AsyncTask( ENamedThreads::AnyBackgroundThreadNormalTask,
+	           [ this ]
+	           {
+				   const int QOffset = Coordinate.X * Size;
+				   const int ROffset = Coordinate.Y * Size;
+
+				   TMap< FIntVector3, FHexagonVoxel > HexagonVoxels;
+				   for( int Q = 0; Q < Size; ++Q )
+				   {
+					   for( int R = 0; R < Size; ++R )
+					   {
+						   const float PerlinNoise = FMath::PerlinNoise2D( FVector2D( Q + QOffset, R + ROffset ) * NoiseScale );
+						   const int64 TileHeight  = FMath::RoundToInt( FMath::GetMappedRangeValueClamped( FVector2D( -1.0f, 1.0f ), FVector2D( 0, Height ), PerlinNoise ) );
+
+						   for( int Z = 0; Z < Height; ++Z )
+						   {
+							   const EVoxelType Type            = Z > TileHeight ? EVoxelType::Air : EVoxelType::Ground;
+							   FIntVector3      VoxelCoordinate = { Q + QOffset, R + ROffset, Z };
+							   FHexagonVoxel    Voxel( VoxelCoordinate, Type );
+							   HexagonVoxels.Add( VoxelCoordinate, Voxel );
+						   }
+					   }
+				   }
+
+				   GenerateMesh( HexagonVoxels );
+			   } );
+}
+
+void AChunk::GenerateMesh( const TMap< FIntVector3, FHexagonVoxel >& HexagonVoxels )
+{
+	TArray< FVector >   Vertices;
+	TArray< int32 >     Triangles;
+	TArray< FVector >   Normals;
+	TArray< FVector2D > UVs;
+
+	const TArray Directions = { FIntPoint( 1, -1 ), FIntPoint( 1, 0 ), FIntPoint( 0, 1 ), FIntPoint( -1, 1 ), FIntPoint( -1, 0 ), FIntPoint( 0, -1 ) };
+
+	for( const TPair< FIntVector3, FHexagonVoxel >& HexagonTile: HexagonVoxels )
+	{
+		const FHexagonVoxel& Voxel           = HexagonTile.Value;
+		const FIntVector3&   VoxelCoordinate = Voxel.GridLocation;
+
+		if( Voxel.Type == EVoxelType::Air )
+			continue;
+
+		FHexagonVoxel TopVoxel;
+		if( !GetVoxel( HexagonVoxels, VoxelCoordinate + FIntVector3( 0, 0, 1 ), TopVoxel ) || TopVoxel.Type == EVoxelType::Air )
+			CreateHexagonTop( Voxel, Vertices, Triangles, Normals, UVs );
+
+		FHexagonVoxel BottomVoxel;
+		if( !GetVoxel( HexagonVoxels, VoxelCoordinate - FIntVector3( 0, 0, 1 ), BottomVoxel ) || BottomVoxel.Type == EVoxelType::Air )
+			CreateHexagonBottom( Voxel, Vertices, Triangles, Normals, UVs );
+
+		for( int i = 0; i < 6; ++i )
+		{
+			const FIntPoint   Direction      = Directions[ i ];
+			const FIntVector3 SideCoordinate = { VoxelCoordinate.X + Direction.X, VoxelCoordinate.Y + Direction.Y, VoxelCoordinate.Z };
+
+			FHexagonVoxel SideVoxel;
+			if( !GetVoxel( HexagonVoxels, SideCoordinate, SideVoxel ) || SideVoxel.Type == EVoxelType::Air )
+				CreateHexagonSide( Voxel, i, Vertices, Triangles, Normals, UVs );
+		}
+	}
+
+	AsyncTask( ENamedThreads::GameThread,
+	           [ this, HexagonVoxels, Vertices, Triangles, Normals, UVs ]
+	           {
+				   HexagonTiles = HexagonVoxels;
+				   if( Vertices.IsEmpty() )
+					   return;
+
+				   const TArray< FLinearColor >     VertexColors;
+				   const TArray< FProcMeshTangent > Tangents;
+				   ProceduralMesh->CreateMeshSection_LinearColor( 0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, false );
+			   } );
 }
 
 void AChunk::CreateHexagonTop( const FHexagonVoxel& Voxel,
@@ -261,4 +265,14 @@ void AChunk::CreateHexagonSide( const FHexagonVoxel& Voxel,
 	OutUVs.Add( FVector2D( 1, 1 ) );
 	OutUVs.Add( FVector2D( 0, 0 ) );
 	OutUVs.Add( FVector2D( 1, 0 ) );
+}
+
+bool AChunk::GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel )
+{
+	const FHexagonVoxel* Voxel = Map.Find( VoxelCoordinate );
+	if( !Voxel )
+		return false;
+
+	OutVoxel = *Voxel;
+	return true;
 }

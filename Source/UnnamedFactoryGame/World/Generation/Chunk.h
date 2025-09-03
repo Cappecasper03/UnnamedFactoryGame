@@ -4,39 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "HexagonVoxel.h"
 
 #include "Chunk.generated.h"
 
 class UProceduralMeshComponent;
 class UHierarchicalInstancedStaticMeshComponent;
-
-USTRUCT()
-struct FHexagonVoxelCoordinate
-{
-	GENERATED_BODY()
-
-	int32 Q;
-	int32 R;
-	int32 Z;
-
-	bool operator==( const FHexagonVoxelCoordinate& Other ) const { return Q == Other.Q && R == Other.R && Z == Other.Z; }
-};
-
-USTRUCT()
-struct FHexagonVoxel
-{
-	GENERATED_BODY()
-
-	FHexagonVoxel() = default;
-	FHexagonVoxel( const FHexagonVoxelCoordinate& Coordinate );
-
-	FHexagonVoxelCoordinate GridLocation;
-	FVector                 WorldLocation;
-
-	bool operator==( const FHexagonVoxel& Other ) const { return GridLocation == Other.GridLocation; }
-};
-
-inline uint32 GetTypeHash( const FHexagonVoxelCoordinate& Coordinate ) { return HashCombine( HashCombine( Coordinate.Q, Coordinate.R ), Coordinate.Z ); }
 
 UCLASS( Abstract )
 class UNNAMEDFACTORYGAME_API AChunk : public AActor
@@ -52,16 +25,19 @@ public:
 
 	void SetVisible();
 
-	bool GetVoxel( const FHexagonVoxelCoordinate& VoxelCoordinate, FHexagonVoxel& OutVoxel );
+	bool GetVoxel( const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel ) const { return GetVoxel( HexagonTiles, VoxelCoordinate, OutVoxel ); }
 
-	static FVector VoxelToWorld( const FHexagonVoxelCoordinate& VoxelCoordinate ) { return FHexagonVoxel( VoxelCoordinate ).WorldLocation; }
+	static FVector VoxelToWorld( const FIntVector3& VoxelCoordinate ) { return FHexagonVoxel( VoxelCoordinate ).WorldLocation; }
 	static FVector ChunkToWorld( const FIntPoint& ChunkCoordinate );
 
-	static FHexagonVoxelCoordinate WorldToVoxel( const FVector& WorldLocation );
-	static FIntPoint               VoxelToChunk( const FHexagonVoxelCoordinate& VoxelCoordinate );
-	static FIntPoint               WorldToChunk( const FVector& WorldLocation );
+	static FIntVector3 WorldToVoxel( const FVector& WorldLocation );
+	static FIntPoint   VoxelToChunk( const FIntVector3& VoxelCoordinate );
+	static FIntPoint   WorldToChunk( const FVector& WorldLocation );
 
-protected:
+private:
+	void GenerateVoxels();
+	void GenerateMesh( const TMap< FIntVector3, FHexagonVoxel >& HexagonVoxels );
+
 	void CreateHexagonTop( const FHexagonVoxel& Voxel,
 	                       TArray< FVector >&   OutVertices,
 	                       TArray< int32 >&     OutTriangles,
@@ -79,11 +55,13 @@ protected:
 	                        TArray< FVector >&   OutNormals,
 	                        TArray< FVector2D >& OutUVs ) const;
 
-	TMap< FHexagonVoxelCoordinate, FHexagonVoxel > HexagonTiles;
+	static bool GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel );
+
+	TMap< FIntVector3, FHexagonVoxel > HexagonTiles;
 
 	FIntPoint Coordinate = FIntPoint::ZeroValue;
 
-	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Chunk" )
+	UPROPERTY( EditDefaultsOnly, Category = "Chunk" )
 	TObjectPtr< UProceduralMeshComponent > ProceduralMesh;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Chunk" )

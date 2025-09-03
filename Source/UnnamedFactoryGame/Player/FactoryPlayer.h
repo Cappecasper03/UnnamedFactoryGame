@@ -28,7 +28,7 @@ public:
 
 	static AFactoryPlayer* Get( const UObject* WorldContextObject );
 
-protected:
+private:
 	void MoveForwardBackwardInput( const FInputActionInstance& Instance );
 	void MoveRightLeftInput( const FInputActionInstance& Instance );
 	void MoveUpDownInput( const FInputActionInstance& Instance );
