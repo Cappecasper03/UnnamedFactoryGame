@@ -17,7 +17,7 @@ float FVoxelNode::CalculateFutureCost( const FVoxelNode& Other ) const
 
 UNavigationComponent::UNavigationComponent() { PrimaryComponentTick.bCanEverTick = false; }
 
-bool UNavigationComponent::FindPath( const FVector& TargetLocation, TArray< FHexagonVoxel >& OutPath ) const
+bool UNavigationComponent::CalculatePath( const FVector& TargetLocation, TArray< FHexagonVoxel >& OutPath ) const
 {
 	UWorldGenerationSubSystem* WorldGenerationSubSystem = UWorldGenerationSubSystem::Get( this );
 
@@ -75,6 +75,9 @@ bool UNavigationComponent::FindPath( const FVector& TargetLocation, TArray< FHex
 
 			if( Voxel.Type == EVoxelType::Air )
 			{
+				if( !WorldGenerationSubSystem->GetVoxel( CurrentNode.Coordinate - FIntVector3( 0, 0, 1 ), Voxel ) || Voxel.Type == EVoxelType::Air )
+					continue;
+
 				bool IsValid = false;
 				for( int i = 0; i < 6; ++i )
 				{

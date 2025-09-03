@@ -32,7 +32,7 @@ class UNNAMEDFACTORYGAME_API UNavigationComponent : public UActorComponent
 public:
 	UNavigationComponent();
 
-	bool FindPath( const FVector& TargetLocation, TArray< FHexagonVoxel >& OutPath ) const;
+	bool CalculatePath( const FVector& TargetLocation, TArray< FHexagonVoxel >& OutPath ) const;
 
 private:
 	TArray< FHexagonVoxel > ReconstructPath( const TMap< FIntVector3, FIntVector3 >& ParentMap, FIntVector3& CurrentNode ) const;
