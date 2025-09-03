@@ -2,9 +2,9 @@
 
 #include "BaseUnit.h"
 
+#include "Components/BoxComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "UnnamedFactoryGame/World/Pathfinding/NavigationComponent.h"
-#include "UnnamedFactoryGame/World/SelectableComponent.h"
 
 ABaseUnit::ABaseUnit()
 {
@@ -15,8 +15,9 @@ ABaseUnit::ABaseUnit()
 	MeshComponent = CreateDefaultSubobject< UStaticMeshComponent >( FName( "MeshComponent" ) );
 	MeshComponent->SetupAttachment( RootComponent );
 
-	SelectableComponent = CreateDefaultSubobject< USelectableComponent >( FName( "SelectableComponent" ) );
-	SelectableComponent->SetupAttachment( MeshComponent );
+	CollisionComponent = CreateDefaultSubobject< UBoxComponent >( FName( "CollisionComponent" ) );
+	CollisionComponent->SetupAttachment( MeshComponent );
+	CollisionComponent->SetBoxExtent( FVector( 50 ) );
 
 	MovementComponent   = CreateDefaultSubobject< UFloatingPawnMovement >( FName( "MovementComponent" ) );
 	NavigationComponent = CreateDefaultSubobject< UNavigationComponent >( FName( "NavigationComponent" ) );

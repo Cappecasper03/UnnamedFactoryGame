@@ -14,4 +14,7 @@ UCLASS()
 class UNNAMEDFACTORYGAME_API AFactoryPlayerController : public APlayerController
 {
 	GENERATED_BODY()
+
+public:
+	static AFactoryPlayerController* Get( const UObject* WorldContextObject );
 };

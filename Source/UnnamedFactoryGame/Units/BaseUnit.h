@@ -8,7 +8,7 @@
 
 #include "BaseUnit.generated.h"
 
-class USelectableComponent;
+class UBoxComponent;
 class UFloatingPawnMovement;
 class UNavigationComponent;
 
@@ -30,7 +30,7 @@ protected:
 	TObjectPtr< UStaticMeshComponent > MeshComponent;
 
 	UPROPERTY( EditAnywhere, BlueprintReadWrite, Category = "Unit" )
-	TObjectPtr< USelectableComponent > SelectableComponent;
+	TObjectPtr< UBoxComponent > CollisionComponent;
 
 	UPROPERTY( EditAnywhere, BlueprintReadWrite, Category = "Unit" )
 	TObjectPtr< UFloatingPawnMovement > MovementComponent;

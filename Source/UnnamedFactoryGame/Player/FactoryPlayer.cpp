@@ -11,6 +11,7 @@
 #include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
 #include "UnnamedFactoryGame/UnnamedFactoryGame.h"
+#include "UnnamedFactoryGame/World/Generation/Chunk.h"
 
 AFactoryPlayer::AFactoryPlayer()
 {
@@ -22,7 +23,13 @@ AFactoryPlayer::AFactoryPlayer()
 	MovementComponent = CreateDefaultSubobject< UPawnMovementComponent, UFloatingPawnMovement >( FName( "MovementComponent" ) );
 }
 
-void AFactoryPlayer::Tick( const float DeltaSeconds ) { Super::Tick( DeltaSeconds ); }
+void AFactoryPlayer::Tick( const float DeltaSeconds )
+{
+	Super::Tick( DeltaSeconds );
+
+	if( IsInteractiveMode )
+		UpdateInteractableData();
+}
 
 void AFactoryPlayer::SetupPlayerInputComponent( UInputComponent* PlayerInputComponent )
 {
@@ -34,7 +41,7 @@ void AFactoryPlayer::SetupPlayerInputComponent( UInputComponent* PlayerInputComp
 		return;
 	}
 
-	const AFactoryPlayerController* PlayerController = Cast< AFactoryPlayerController >( Controller );
+	const AFactoryPlayerController* PlayerController = AFactoryPlayerController::Get( this );
 	if( !IsValid( PlayerController ) )
 		return;
 
@@ -56,6 +63,8 @@ void AFactoryPlayer::SetupPlayerInputComponent( UInputComponent* PlayerInputComp
 	Input->BindAction( ChangeSpeedAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::ChangeSpeedInput );
 
 	Input->BindAction( ToggleInteractiveModeAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::ToggleInteractiveModeInput );
+
+	Input->BindAction( SelectInteractableAction, ETriggerEvent::Triggered, this, &AFactoryPlayer::SelectInteractableInput );
 }
 
 AFactoryPlayer* AFactoryPlayer::Get( const UObject* WorldContextObject )
@@ -66,14 +75,28 @@ AFactoryPlayer* AFactoryPlayer::Get( const UObject* WorldContextObject )
 	return Cast< AFactoryPlayer >( UGameplayStatics::GetPlayerPawn( WorldContextObject->GetWorld(), 0 ) );
 }
 
+void AFactoryPlayer::UpdateInteractableData()
+{
+	const AFactoryPlayerController* PlayerController = AFactoryPlayerController::Get( this );
+
+	FVector Location;
+	FVector Direction;
+	PlayerController->DeprojectMousePositionToWorld( Location, Direction );
+
+	if( !GetWorld()->LineTraceSingleByChannel( InteractableData, GetActorLocation(), GetActorLocation() + Direction * 5000, ECC_Visibility ) )
+		return;
+
+	DrawDebugSphere( GetWorld(), InteractableData.ImpactPoint, 10, 20, FColor::Red );
+}
+
 void AFactoryPlayer::MoveForwardBackwardInput( const FInputActionInstance& Instance )
 {
 	const float Value = Instance.GetValue().Get< float >();
 
-	if( !GetController() )
+	if( !Controller )
 		return;
 
-	FRotator const ControlSpaceRot = GetController()->GetControlRotation();
+	FRotator const ControlSpaceRot = Controller->GetControlRotation();
 	FVector        Direction       = FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::X );
 
 	if( IsInteractiveMode )
@@ -89,10 +112,10 @@ void AFactoryPlayer::MoveRightLeftInput( const FInputActionInstance& Instance )
 {
 	const float Value = Instance.GetValue().Get< float >();
 
-	if( !GetController() )
+	if( !Controller )
 		return;
 
-	FRotator const ControlSpaceRot = GetController()->GetControlRotation();
+	FRotator const ControlSpaceRot = Controller->GetControlRotation();
 
 	AddMovementInput( FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::Y ), Value * SpeedMultiplier );
 }
@@ -136,7 +159,7 @@ void AFactoryPlayer::ToggleInteractiveModeInput()
 {
 	IsInteractiveMode = !IsInteractiveMode;
 
-	AFactoryPlayerController* PlayerController = Cast< AFactoryPlayerController >( GetController() );
+	AFactoryPlayerController* PlayerController = AFactoryPlayerController::Get( this );
 	if( !IsValid( PlayerController ) )
 		return;
 
@@ -155,4 +178,25 @@ void AFactoryPlayer::ToggleInteractiveModeInput()
 	}
 	else
 		PlayerController->SetInputMode( FInputModeGameOnly() );
+}
+
+void AFactoryPlayer::SelectInteractableInput()
+{
+	if( !IsInteractiveMode )
+		return;
+
+	const AActor* Actor = InteractableData.GetActor();
+	if( !IsValid( Actor ) )
+		return;
+
+	if( Actor->IsA( AChunk::StaticClass() ) )
+	{
+		const AChunk* Chunk = Cast< AChunk >( Actor );
+		FHexagonVoxel Voxel;
+		if( !Chunk->GetVoxel( InteractableData.ImpactPoint - InteractableData.ImpactNormal * 10, Voxel ) )
+			return;
+
+		DrawDebugSphere( GetWorld(), Voxel.WorldLocation, 10, 20, FColor::Red, false, 5 );
+	}
+	else {}
 }

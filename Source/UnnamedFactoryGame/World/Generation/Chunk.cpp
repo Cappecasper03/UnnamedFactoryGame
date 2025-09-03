@@ -161,7 +161,7 @@ void AChunk::GenerateMesh( const TMap< FIntVector3, FHexagonVoxel >& HexagonVoxe
 
 				   const TArray< FLinearColor >     VertexColors;
 				   const TArray< FProcMeshTangent > Tangents;
-				   ProceduralMesh->CreateMeshSection_LinearColor( 0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, false );
+				   ProceduralMesh->CreateMeshSection_LinearColor( 0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, true );
 			   } );
 }
 
@@ -275,4 +275,9 @@ bool AChunk::GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FInt
 
 	OutVoxel = *Voxel;
 	return true;
+}
+
+bool AChunk::GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FVector& WorldLocation, FHexagonVoxel& OutVoxel )
+{
+	return GetVoxel( Map, WorldToVoxel( WorldLocation ), OutVoxel );
 }

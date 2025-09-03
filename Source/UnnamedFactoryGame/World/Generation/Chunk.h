@@ -26,6 +26,7 @@ public:
 	void SetVisible();
 
 	bool GetVoxel( const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel ) const { return GetVoxel( HexagonTiles, VoxelCoordinate, OutVoxel ); }
+	bool GetVoxel( const FVector& WorldLocation, FHexagonVoxel& OutVoxel ) const { return GetVoxel( HexagonTiles, WorldLocation, OutVoxel ); }
 
 	static FVector VoxelToWorld( const FIntVector3& VoxelCoordinate ) { return FHexagonVoxel( VoxelCoordinate ).WorldLocation; }
 	static FVector ChunkToWorld( const FIntPoint& ChunkCoordinate );
@@ -56,6 +57,7 @@ private:
 	                        TArray< FVector2D >& OutUVs ) const;
 
 	static bool GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel );
+	static bool GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FVector& WorldLocation, FHexagonVoxel& OutVoxel );
 
 	TMap< FIntVector3, FHexagonVoxel > HexagonTiles;
 

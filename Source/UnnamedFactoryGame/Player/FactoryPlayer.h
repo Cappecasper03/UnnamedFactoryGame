@@ -8,6 +8,7 @@
 
 #include "FactoryPlayer.generated.h"
 
+class AFactoryPlayerController;
 class UInputAction;
 class UInputMappingContext;
 class UCameraComponent;
@@ -20,15 +21,17 @@ class UNNAMEDFACTORYGAME_API AFactoryPlayer : public APawn
 public:
 	AFactoryPlayer();
 
+	static AFactoryPlayer* Get( const UObject* WorldContextObject );
+
 	virtual void Tick( float DeltaSeconds ) override;
 
 	virtual void SetupPlayerInputComponent( UInputComponent* PlayerInputComponent ) override;
 
 	virtual UPawnMovementComponent* GetMovementComponent() const override { return MovementComponent; }
 
-	static AFactoryPlayer* Get( const UObject* WorldContextObject );
-
 private:
+	void UpdateInteractableData();
+
 	void MoveForwardBackwardInput( const FInputActionInstance& Instance );
 	void MoveRightLeftInput( const FInputActionInstance& Instance );
 	void MoveUpDownInput( const FInputActionInstance& Instance );
@@ -37,6 +40,8 @@ private:
 	void ChangeSpeedInput( const FInputActionInstance& Instance );
 
 	void ToggleInteractiveModeInput();
+
+	void SelectInteractableInput();
 
 	UPROPERTY( EditDefaultsOnly, Category = "Camera" )
 	TObjectPtr< UCameraComponent > CameraComponent;
@@ -57,16 +62,19 @@ private:
 	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
 	TObjectPtr< UInputAction > ChangeSpeedAction;
 
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Mode" )
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
 	TObjectPtr< UInputAction > ToggleInteractiveModeAction;
 
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Sensitivity" )
-	float MouseSensitivity = .45f;
+	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Interact" )
+	TObjectPtr< UInputAction > SelectInteractableAction;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Movement" )
 	TObjectPtr< UPawnMovementComponent > MovementComponent;
 
-	float SpeedMultiplier = .5f;
+	float MouseSensitivity = .45f;
+	float SpeedMultiplier  = .5f;
 
 	bool IsInteractiveMode = false;
+
+	FHitResult InteractableData;
 };
