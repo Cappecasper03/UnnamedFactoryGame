@@ -13,6 +13,27 @@ int   AChunk::StaticSize       = 0;
 int   AChunk::StaticHeight     = 0;
 float AChunk::StaticNoiseScale = 0;
 
+struct FHexagonVertexKey
+{
+	TArray< FIntPoint > Coordinates;
+
+	FHexagonVertexKey() { Coordinates.AddZeroed( 3 ); }
+	FHexagonVertexKey( const FIntPoint& A, const FIntPoint& B, const FIntPoint& C )
+	{
+		Coordinates.Add( A );
+		Coordinates.Add( B );
+		Coordinates.Add( C );
+		Coordinates.Sort( []( const FIntPoint& Left, const FIntPoint& Right ) { return Left.X < Right.X || ( Left.X == Right.X && Left.Y < Right.Y ); } );
+	}
+
+	bool operator==( const FHexagonVertexKey& Other ) const { return Coordinates == Other.Coordinates; }
+
+	friend uint32 GetTypeHash( const FHexagonVertexKey& Key )
+	{
+		return HashCombine( HashCombine( GetTypeHash( Key.Coordinates[ 0 ] ), GetTypeHash( Key.Coordinates[ 1 ] ) ), GetTypeHash( Key.Coordinates[ 2 ] ) );
+	}
+};
+
 AChunk::AChunk()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -150,22 +171,22 @@ void AChunk::GenerateMesh( const TMap< FIntVector, FHexagonVoxel >& HexagonVoxel
 		}
 	}
 
-	TArray< FVector >   Vertices;
-	TArray< int32 >     Triangles;
-	TArray< FVector >   Normals;
-	TArray< FVector2D > UVs;
+	TArray< FVector > Vertices;
+	TArray< int32 >   Triangles;
+	TArray< FVector > Normals;
 
-	GenerateMeshRegions( TopVisibleVoxels, true, Vertices, Triangles, Normals, UVs );
-	GenerateMeshRegions( BottomVisibleVoxels, false, Vertices, Triangles, Normals, UVs );
-	GenerateMeshRegions( SideVisibleVoxels, Vertices, Triangles, Normals, UVs );
+	GenerateMeshRegions( TopVisibleVoxels, true, Vertices, Triangles, Normals );
+	GenerateMeshRegions( BottomVisibleVoxels, false, Vertices, Triangles, Normals );
+	GenerateMeshRegions( SideVisibleVoxels, Vertices, Triangles, Normals );
 
 	AsyncTask( ENamedThreads::GameThread,
-	           [ this, HexagonVoxels, Vertices, Triangles, Normals, UVs ]
+	           [ this, HexagonVoxels, Vertices, Triangles, Normals ]
 	           {
 				   HexagonTiles = HexagonVoxels;
 				   if( Vertices.IsEmpty() )
 					   return;
 
+				   const TArray< FVector2D >        UVs;
 				   const TArray< FLinearColor >     VertexColors;
 				   const TArray< FProcMeshTangent > Tangents;
 				   ProceduralMesh->CreateMeshSection_LinearColor( 0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, true );
@@ -176,8 +197,7 @@ void AChunk::GenerateMeshRegions( TMap< int32, TArray< FIntPoint > >& VisibleVox
                                   const bool                          IsTop,
                                   TArray< FVector >&                  OutVertices,
                                   TArray< int32 >&                    OutTriangles,
-                                  TArray< FVector >&                  OutNormals,
-                                  TArray< FVector2D >&                OutUVs ) const
+                                  TArray< FVector >&                  OutNormals ) const
 {
 	for( TPair< int32, TArray< FIntPoint > >& VoxelPlane: VisibleVoxelCoordinates )
 	{
@@ -209,7 +229,7 @@ void AChunk::GenerateMeshRegions( TMap< int32, TArray< FIntPoint > >& VisibleVox
 				}
 			}
 
-			GenerateMeshPolygon( VoxelPlane.Key, Region, IsTop, OutVertices, OutTriangles, OutNormals, OutUVs );
+			GenerateMeshPolygon( VoxelPlane.Key, Region, IsTop, OutVertices, OutTriangles, OutNormals );
 		}
 	}
 }
@@ -217,8 +237,7 @@ void AChunk::GenerateMeshRegions( TMap< int32, TArray< FIntPoint > >& VisibleVox
 void AChunk::GenerateMeshRegions( TMap< FIntVector, TArray< int32 > >& VisibleVoxelCoordinates,
                                   TArray< FVector >&                   OutVertices,
                                   TArray< int32 >&                     OutTriangles,
-                                  TArray< FVector >&                   OutNormals,
-                                  TArray< FVector2D >&                 OutUVs ) const
+                                  TArray< FVector >&                   OutNormals ) const
 {
 	for( TPair< FIntVector, TArray< int32 > >& VoxelPlane: VisibleVoxelCoordinates )
 	{
@@ -250,7 +269,7 @@ void AChunk::GenerateMeshRegions( TMap< FIntVector, TArray< int32 > >& VisibleVo
 				}
 			}
 
-			GenerateMeshPolygon( VoxelPlane.Key, Region, OutVertices, OutTriangles, OutNormals, OutUVs );
+			GenerateMeshPolygon( VoxelPlane.Key, Region, OutVertices, OutTriangles, OutNormals );
 		}
 	}
 }
@@ -260,37 +279,40 @@ void AChunk::GenerateMeshPolygon( const int32          PolygonHeight,
                                   const bool           IsTop,
                                   TArray< FVector >&   OutVertices,
                                   TArray< int32 >&     OutTriangles,
-                                  TArray< FVector >&   OutNormals,
-                                  TArray< FVector2D >& OutUVs ) const
+                                  TArray< FVector >&   OutNormals ) const
 {
 	if( Region.IsEmpty() )
 		return;
 
-	TMap< FIntVector, FIntVector > EdgeConnections;
-	TMap< FIntVector, FVector >    IntToFloat;
-	TSet                           RegionSet( Region );
+	TMap< FHexagonVertexKey, FHexagonVertexKey > EdgeConnections;
+	TMap< FHexagonVertexKey, FVector >           KeyToLocation;
 
-	for( const FIntPoint& VoxelCoordinate: RegionSet )
+	for( const FIntPoint& VoxelCoordinate: Region )
 	{
 		for( int i = 0; i < 6; ++i )
 		{
 			const FIntPoint& Neighbor = VoxelCoordinate + Directions[ i ];
-			if( RegionSet.Contains( Neighbor ) )
+			if( Region.Contains( Neighbor ) )
 				continue;
 
-			const float Angle1 = FMath::DegreesToRadians( 60 * i );
-			const float Angle2 = FMath::DegreesToRadians( 60 * ( ( i - 1 ) % 6 ) );
+			const FIntPoint& ThirdHexagon1 = VoxelCoordinate + Directions[ ( i + 5 ) % 6 ];
+			const FIntPoint& ThirdHexagon2 = VoxelCoordinate + Directions[ ( i + 1 ) % 6 ];
 
-			const FVector Center  = FHexagonVoxel( FIntVector( VoxelCoordinate.X, VoxelCoordinate.Y, PolygonHeight + IsTop ) ).WorldLocation;
-			const FVector Corner1 = Center + FVector( FMath::Cos( Angle1 ), FMath::Sin( Angle1 ), 0 ) * HexagonRadius;
-			const FVector Corner2 = Center + FVector( FMath::Cos( Angle2 ), FMath::Sin( Angle2 ), 0 ) * HexagonRadius;
+			const FHexagonVertexKey Key1( VoxelCoordinate, Neighbor, ThirdHexagon1 );
+			const FHexagonVertexKey Key2( VoxelCoordinate, Neighbor, ThirdHexagon2 );
 
-			const FIntVector IntCorner1( FMath::RoundToInt( Corner1.X ), FMath::RoundToInt( Corner1.Y ), FMath::RoundToInt( Corner1.Z ) );
-			const FIntVector IntCorner2( FMath::RoundToInt( Corner2.X ), FMath::RoundToInt( Corner2.Y ), FMath::RoundToInt( Corner2.Z ) );
+			EdgeConnections.Add( Key1, Key2 );
 
-			EdgeConnections.Add( IntCorner1, IntCorner2 );
-			IntToFloat.Add( IntCorner1, Corner1 );
-			IntToFloat.Add( IntCorner2, Corner2 );
+			const FVector Center1  = FHexagonVoxel( FIntVector( VoxelCoordinate.X, VoxelCoordinate.Y, PolygonHeight + IsTop ) ).WorldLocation;
+			const FVector Center2  = FHexagonVoxel( FIntVector( Neighbor.X, Neighbor.Y, PolygonHeight + IsTop ) ).WorldLocation;
+			const FVector Center31 = FHexagonVoxel( FIntVector( ThirdHexagon1.X, ThirdHexagon1.Y, PolygonHeight + IsTop ) ).WorldLocation;
+			const FVector Center32 = FHexagonVoxel( FIntVector( ThirdHexagon2.X, ThirdHexagon2.Y, PolygonHeight + IsTop ) ).WorldLocation;
+
+			const FVector Corner1 = ( Center1 + Center2 + Center31 ) / 3;
+			const FVector Corner2 = ( Center1 + Center2 + Center32 ) / 3;
+
+			KeyToLocation.FindOrAdd( Key1, Corner1 );
+			KeyToLocation.FindOrAdd( Key2, Corner2 );
 		}
 	}
 
@@ -300,13 +322,13 @@ void AChunk::GenerateMeshPolygon( const int32          PolygonHeight,
 	TArray< TArray< FVector > > Polygons;
 	while( !EdgeConnections.IsEmpty() )
 	{
-		TArray< FVector > Loop;
-		const FIntVector  Start   = EdgeConnections.begin().Key();
-		FIntVector        Current = Start;
+		TArray< FVector >       Loop;
+		const FHexagonVertexKey Start   = EdgeConnections.begin().Key();
+		FHexagonVertexKey       Current = Start;
 
 		while( EdgeConnections.Contains( Current ) )
 		{
-			Loop.Add( IntToFloat.FindChecked( Current ) );
+			Loop.Add( KeyToLocation.FindChecked( Current ) );
 			Current = EdgeConnections.FindAndRemoveChecked( Current );
 		}
 
@@ -379,7 +401,6 @@ void AChunk::GenerateMeshPolygon( const int32          PolygonHeight,
 	{
 		OutVertices.Add( Vertex );
 		OutNormals.Add( Normal );
-		OutUVs.Add( FVector2D( Vertex.X / 100, Vertex.Y / 100 ) );
 	}
 
 	for( const UE::Geometry::FIndex3i& Triangle: Triangles )
@@ -390,12 +411,11 @@ void AChunk::GenerateMeshPolygon( const int32          PolygonHeight,
 	}
 }
 
-void AChunk::GenerateMeshPolygon( const FIntVector&    PolygonCoordinate,
-                                  TArray< int32 >&     Region,
-                                  TArray< FVector >&   OutVertices,
-                                  TArray< int32 >&     OutTriangles,
-                                  TArray< FVector >&   OutNormals,
-                                  TArray< FVector2D >& OutUVs ) const
+void AChunk::GenerateMeshPolygon( const FIntVector&  PolygonCoordinate,
+                                  TArray< int32 >&   Region,
+                                  TArray< FVector >& OutVertices,
+                                  TArray< int32 >&   OutTriangles,
+                                  TArray< FVector >& OutNormals ) const
 {
 	if( Region.IsEmpty() )
 		return;
@@ -433,11 +453,6 @@ void AChunk::GenerateMeshPolygon( const FIntVector&    PolygonCoordinate,
 
 	for( int i = 0; i < 4; ++i )
 		OutNormals.Add( Normal );
-
-	OutUVs.Add( FVector2D( 0, 1 ) );
-	OutUVs.Add( FVector2D( 1, 1 ) );
-	OutUVs.Add( FVector2D( 0, 0 ) );
-	OutUVs.Add( FVector2D( 1, 0 ) );
 }
 
 float AChunk::Signed2DPolygonArea( const TArray< FVector >& Polygon ) const
@@ -450,7 +465,7 @@ float AChunk::Signed2DPolygonArea( const TArray< FVector >& Polygon ) const
 		Area                  += Point1.X * Point2.Y - Point2.X * Point1.Y;
 	}
 
-	return Area * .5f;
+	return Area;
 }
 
 bool AChunk::GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel )

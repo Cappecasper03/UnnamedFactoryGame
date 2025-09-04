@@ -20,9 +20,9 @@ struct FVoxelNode
 
 	bool operator<( const FVoxelNode& Other ) const { return Cost < Other.Cost; }
 	bool operator==( const FVoxelNode& Other ) const { return Coordinate == Other.Coordinate; }
-};
 
-inline int32 GetTypeHash( const FVoxelNode& Node ) { return HashCombine( HashCombine( Node.Coordinate.X, Node.Coordinate.Y ), Node.Coordinate.Z ); }
+	friend int32 GetTypeHash( const FVoxelNode& Node ) { return HashCombine( HashCombine( Node.Coordinate.X, Node.Coordinate.Y ), Node.Coordinate.Z ); }
+};
 
 UCLASS( ClassGroup = ( Custom ), meta = ( BlueprintSpawnableComponent ) )
 class UNNAMEDFACTORYGAME_API UNavigationComponent : public UActorComponent
