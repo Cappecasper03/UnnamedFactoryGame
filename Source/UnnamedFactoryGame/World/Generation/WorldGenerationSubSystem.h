@@ -26,11 +26,11 @@ public:
 	virtual void Tick( float DeltaTime ) override;
 
 	AChunk* GetChunk( const FVector& WorldLocation );
-	AChunk* GetChunk( const FIntVector3& VoxelCoordinate );
+	AChunk* GetChunk( const FIntVector& VoxelCoordinate );
 	AChunk* GetChunk( const FIntPoint& ChunkCoordinate );
 
 	bool GetVoxel( const FVector& WorldLocation, FHexagonVoxel& OutVoxel );
-	bool GetVoxel( const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel );
+	bool GetVoxel( const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel );
 
 private:
 	void GenerateChunk( FIntPoint Chunk );

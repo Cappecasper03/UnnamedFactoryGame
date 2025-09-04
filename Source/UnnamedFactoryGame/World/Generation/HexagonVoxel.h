@@ -24,11 +24,11 @@ struct FHexagonVoxel
 	GENERATED_BODY()
 
 	FHexagonVoxel() = default;
-	FHexagonVoxel( const FIntVector3& Coordinate, const EVoxelType VoxelType = EVoxelType::Air );
+	FHexagonVoxel( const FIntVector& Coordinate, const EVoxelType VoxelType = EVoxelType::Air );
 
-	FIntVector3 GridLocation  = FIntVector3::ZeroValue;
-	FVector     WorldLocation = FVector::ZeroVector;
-	EVoxelType  Type          = EVoxelType::Air;
+	FIntVector GridLocation  = FIntVector::ZeroValue;
+	FVector    WorldLocation = FVector::ZeroVector;
+	EVoxelType Type          = EVoxelType::Air;
 
 	bool operator==( const FHexagonVoxel& Other ) const { return GridLocation == Other.GridLocation; }
 };

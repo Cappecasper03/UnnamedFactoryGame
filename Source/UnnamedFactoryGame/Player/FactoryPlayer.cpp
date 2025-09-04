@@ -99,11 +99,8 @@ void AFactoryPlayer::MoveForwardBackwardInput( const FInputActionInstance& Insta
 	FRotator const ControlSpaceRot = Controller->GetControlRotation();
 	FVector        Direction       = FRotationMatrix( ControlSpaceRot ).GetScaledAxis( EAxis::X );
 
-	if( IsInteractiveMode )
-	{
-		Direction.Z = 0;
-		Direction.Normalize();
-	}
+	Direction.Z = 0;
+	Direction.Normalize();
 
 	AddMovementInput( Direction, Value * SpeedMultiplier );
 }

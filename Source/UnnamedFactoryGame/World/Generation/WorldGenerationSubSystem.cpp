@@ -33,7 +33,7 @@ AChunk* UWorldGenerationSubSystem::GetChunk( const FVector& WorldLocation )
 	return GetChunk( Chunk );
 }
 
-AChunk* UWorldGenerationSubSystem::GetChunk( const FIntVector3& VoxelCoordinate )
+AChunk* UWorldGenerationSubSystem::GetChunk( const FIntVector& VoxelCoordinate )
 {
 	const FIntPoint Chunk = AChunk::VoxelToChunk( VoxelCoordinate );
 	return GetChunk( Chunk );
@@ -60,7 +60,7 @@ bool UWorldGenerationSubSystem::GetVoxel( const FVector& WorldLocation, FHexagon
 	return true;
 }
 
-bool UWorldGenerationSubSystem::GetVoxel( const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel )
+bool UWorldGenerationSubSystem::GetVoxel( const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel )
 {
 	const AChunk* Chunk = GetChunk( VoxelCoordinate );
 	if( !IsValid( Chunk ) )

@@ -2,7 +2,7 @@
 
 #include "HexagonVoxel.h"
 
-FHexagonVoxel::FHexagonVoxel( const FIntVector3& Coordinate, const EVoxelType VoxelType )
+FHexagonVoxel::FHexagonVoxel( const FIntVector& Coordinate, const EVoxelType VoxelType )
 {
 	GridLocation = Coordinate;
 

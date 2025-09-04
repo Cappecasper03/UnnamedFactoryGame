@@ -7,6 +7,8 @@
 #include "ProceduralMeshComponent.h"
 #include "WorldPartition/WorldPartition.h"
 
+const TArray Directions = { FIntPoint( 1, -1 ), FIntPoint( 1, 0 ), FIntPoint( 0, 1 ), FIntPoint( -1, 1 ), FIntPoint( -1, 0 ), FIntPoint( 0, -1 ) };
+
 int   AChunk::StaticSize       = 0;
 int   AChunk::StaticHeight     = 0;
 float AChunk::StaticNoiseScale = 0;
@@ -36,9 +38,9 @@ void AChunk::SetVisible()
 	GetWorld()->GetTimerManager().SetTimer( VisibilityTimer, [ this ] { ProceduralMesh->SetVisibility( false ); }, 1, false );
 }
 
-FVector AChunk::ChunkToWorld( const FIntPoint& ChunkCoordinate ) { return VoxelToWorld( FIntVector3( ChunkCoordinate.X * StaticSize, ChunkCoordinate.Y * StaticSize, 0 ) ); }
+FVector AChunk::ChunkToWorld( const FIntPoint& ChunkCoordinate ) { return VoxelToWorld( FIntVector( ChunkCoordinate.X * StaticSize, ChunkCoordinate.Y * StaticSize, 0 ) ); }
 
-FIntVector3 AChunk::WorldToVoxel( const FVector& WorldLocation )
+FIntVector AChunk::WorldToVoxel( const FVector& WorldLocation )
 {
 	static constexpr float TwoThirds     = 2.f / 3.f;
 	static constexpr float NegativeThird = -1.f / 3.f;
@@ -63,14 +65,14 @@ FIntVector3 AChunk::WorldToVoxel( const FVector& WorldLocation )
 	else if( RDiff > SDiff )
 		FinalR = -FinalQ - FMath::RoundToInt( -QFloat - RFloat );
 
-	FIntVector3 Coordinate;
+	FIntVector Coordinate;
 	Coordinate.X = FinalQ;
 	Coordinate.Y = FinalR;
 	Coordinate.Z = FMath::RoundToInt( WorldLocation.Z / HexagonHeight );
 	return Coordinate;
 }
 
-FIntPoint AChunk::VoxelToChunk( const FIntVector3& VoxelCoordinate )
+FIntPoint AChunk::VoxelToChunk( const FIntVector& VoxelCoordinate )
 {
 	const int32 X = FMath::FloorToInt( static_cast< float >( VoxelCoordinate.X ) / StaticSize );
 	const int32 Y = FMath::FloorToInt( static_cast< float >( VoxelCoordinate.Y ) / StaticSize );
@@ -79,14 +81,13 @@ FIntPoint AChunk::VoxelToChunk( const FIntVector3& VoxelCoordinate )
 
 FIntPoint AChunk::WorldToChunk( const FVector& WorldLocation )
 {
-	const FIntVector3 VoxelCoordinate = WorldToVoxel( WorldLocation );
+	const FIntVector VoxelCoordinate = WorldToVoxel( WorldLocation );
 	return VoxelToChunk( VoxelCoordinate );
 }
 
 void AChunk::GenerateVoxels()
 {
 	HexagonTiles.Empty();
-	ProceduralMesh->ClearAllMeshSections();
 
 	AsyncTask( ENamedThreads::AnyBackgroundThreadNormalTask,
 	           [ this ]
@@ -94,7 +95,7 @@ void AChunk::GenerateVoxels()
 				   const int QOffset = Coordinate.X * Size;
 				   const int ROffset = Coordinate.Y * Size;
 
-				   TMap< FIntVector3, FHexagonVoxel > HexagonVoxels;
+				   TMap< FIntVector, FHexagonVoxel > HexagonVoxels;
 				   for( int Q = 0; Q < Size; ++Q )
 				   {
 					   for( int R = 0; R < Size; ++R )
@@ -105,7 +106,7 @@ void AChunk::GenerateVoxels()
 						   for( int Z = 0; Z < Height; ++Z )
 						   {
 							   const EVoxelType Type            = Z > TileHeight ? EVoxelType::Air : EVoxelType::Ground;
-							   FIntVector3      VoxelCoordinate = { Q + QOffset, R + ROffset, Z };
+							   FIntVector       VoxelCoordinate = { Q + QOffset, R + ROffset, Z };
 							   FHexagonVoxel    Voxel( VoxelCoordinate, Type );
 							   HexagonVoxels.Add( VoxelCoordinate, Voxel );
 						   }
@@ -116,41 +117,47 @@ void AChunk::GenerateVoxels()
 			   } );
 }
 
-void AChunk::GenerateMesh( const TMap< FIntVector3, FHexagonVoxel >& HexagonVoxels )
+void AChunk::GenerateMesh( const TMap< FIntVector, FHexagonVoxel >& HexagonVoxels )
 {
-	TArray< FVector >   Vertices;
-	TArray< int32 >     Triangles;
-	TArray< FVector >   Normals;
-	TArray< FVector2D > UVs;
+	TMap< int32, TArray< FIntPoint > >  TopVisibleVoxels;
+	TMap< int32, TArray< FIntPoint > >  BottomVisibleVoxels;
+	TMap< FIntVector, TArray< int32 > > SideVisibleVoxels;
 
-	const TArray Directions = { FIntPoint( 1, -1 ), FIntPoint( 1, 0 ), FIntPoint( 0, 1 ), FIntPoint( -1, 1 ), FIntPoint( -1, 0 ), FIntPoint( 0, -1 ) };
-
-	for( const TPair< FIntVector3, FHexagonVoxel >& HexagonTile: HexagonVoxels )
+	for( const TPair< FIntVector, FHexagonVoxel >& HexagonTile: HexagonVoxels )
 	{
 		const FHexagonVoxel& Voxel           = HexagonTile.Value;
-		const FIntVector3&   VoxelCoordinate = Voxel.GridLocation;
+		const FIntVector&    VoxelCoordinate = Voxel.GridLocation;
 
 		if( Voxel.Type == EVoxelType::Air )
 			continue;
 
 		FHexagonVoxel TopVoxel;
-		if( !GetVoxel( HexagonVoxels, VoxelCoordinate + FIntVector3( 0, 0, 1 ), TopVoxel ) || TopVoxel.Type == EVoxelType::Air )
-			CreateHexagonTop( Voxel, Vertices, Triangles, Normals, UVs );
+		if( !GetVoxel( HexagonVoxels, VoxelCoordinate + FIntVector( 0, 0, 1 ), TopVoxel ) || TopVoxel.Type == EVoxelType::Air )
+			TopVisibleVoxels.FindOrAdd( VoxelCoordinate.Z ).Add( FIntPoint( VoxelCoordinate.X, VoxelCoordinate.Y ) );
 
 		FHexagonVoxel BottomVoxel;
-		if( !GetVoxel( HexagonVoxels, VoxelCoordinate - FIntVector3( 0, 0, 1 ), BottomVoxel ) || BottomVoxel.Type == EVoxelType::Air )
-			CreateHexagonBottom( Voxel, Vertices, Triangles, Normals, UVs );
+		if( !GetVoxel( HexagonVoxels, VoxelCoordinate - FIntVector( 0, 0, 1 ), BottomVoxel ) || BottomVoxel.Type == EVoxelType::Air )
+			BottomVisibleVoxels.FindOrAdd( VoxelCoordinate.Z ).Add( FIntPoint( VoxelCoordinate.X, VoxelCoordinate.Y ) );
 
 		for( int i = 0; i < 6; ++i )
 		{
-			const FIntPoint   Direction      = Directions[ i ];
-			const FIntVector3 SideCoordinate = { VoxelCoordinate.X + Direction.X, VoxelCoordinate.Y + Direction.Y, VoxelCoordinate.Z };
+			const FIntPoint  Direction      = Directions[ i ];
+			const FIntVector SideCoordinate = { VoxelCoordinate.X + Direction.X, VoxelCoordinate.Y + Direction.Y, VoxelCoordinate.Z };
 
 			FHexagonVoxel SideVoxel;
 			if( !GetVoxel( HexagonVoxels, SideCoordinate, SideVoxel ) || SideVoxel.Type == EVoxelType::Air )
-				CreateHexagonSide( Voxel, i, Vertices, Triangles, Normals, UVs );
+				SideVisibleVoxels.FindOrAdd( FIntVector( VoxelCoordinate.X, VoxelCoordinate.Y, i ) ).Add( VoxelCoordinate.Z );
 		}
 	}
+
+	TArray< FVector >   Vertices;
+	TArray< int32 >     Triangles;
+	TArray< FVector >   Normals;
+	TArray< FVector2D > UVs;
+
+	GenerateMeshRegions( TopVisibleVoxels, true, Vertices, Triangles, Normals, UVs );
+	GenerateMeshRegions( BottomVisibleVoxels, false, Vertices, Triangles, Normals, UVs );
+	GenerateMeshRegions( SideVisibleVoxels, Vertices, Triangles, Normals, UVs );
 
 	AsyncTask( ENamedThreads::GameThread,
 	           [ this, HexagonVoxels, Vertices, Triangles, Normals, UVs ]
@@ -165,96 +172,262 @@ void AChunk::GenerateMesh( const TMap< FIntVector3, FHexagonVoxel >& HexagonVoxe
 			   } );
 }
 
-void AChunk::CreateHexagonTop( const FHexagonVoxel& Voxel,
-                               TArray< FVector >&   OutVertices,
-                               TArray< int32 >&     OutTriangles,
-                               TArray< FVector >&   OutNormals,
-                               TArray< FVector2D >& OutUVs ) const
+void AChunk::GenerateMeshRegions( TMap< int32, TArray< FIntPoint > >& VisibleVoxelCoordinates,
+                                  const bool                          IsTop,
+                                  TArray< FVector >&                  OutVertices,
+                                  TArray< int32 >&                    OutTriangles,
+                                  TArray< FVector >&                  OutNormals,
+                                  TArray< FVector2D >&                OutUVs ) const
 {
-	const int32   Index     = OutVertices.Num();
-	const FVector TopCenter = Voxel.WorldLocation + FVector( 0, 0, HexagonHeight );
-
-	OutVertices.Add( TopCenter );
-	OutUVs.Add( FVector2D( .5f, .5f ) );
-
-	for( int i = 0; i < 6; ++i )
+	for( TPair< int32, TArray< FIntPoint > >& VoxelPlane: VisibleVoxelCoordinates )
 	{
-		const float Angle = FMath::DegreesToRadians( 60 * i );
-		OutVertices.Add( TopCenter + FVector( FMath::Cos( Angle ), FMath::Sin( Angle ), 0 ) * HexagonRadius );
+		TArray< FIntPoint >& Coordinates = VoxelPlane.Value;
 
-		OutTriangles.Add( Index );
-		OutTriangles.Add( Index + 1 + ( i + 1 ) % 6 );
-		OutTriangles.Add( Index + 1 + i );
+		while( !Coordinates.IsEmpty() )
+		{
+			TArray< FIntPoint > Region;
+			TArray< FIntPoint > Queue;
 
-		OutUVs.Add( FVector2D( FMath::Cos( Angle ) * .5f + .5f, FMath::Sin( Angle ) * .5f + .5f ) );
+			const FIntPoint Start = *Coordinates.begin();
+			Coordinates.RemoveAt( 0 );
+			Region.Add( Start );
+			Queue.Add( Start );
+
+			while( !Queue.IsEmpty() )
+			{
+				const FIntPoint Current = Queue.Pop();
+
+				for( const FIntPoint& Direction: Directions )
+				{
+					FIntPoint Neighbor = Current + Direction;
+					if( !Coordinates.Contains( Neighbor ) )
+						continue;
+
+					Coordinates.Remove( Neighbor );
+					Region.Add( Neighbor );
+					Queue.Add( Neighbor );
+				}
+			}
+
+			GenerateMeshPolygon( VoxelPlane.Key, Region, IsTop, OutVertices, OutTriangles, OutNormals, OutUVs );
+		}
 	}
-
-	OutNormals.AddUninitialized( 7 );
-	for( int i = 0; i < 7; ++i )
-		OutNormals[ Index + i ] = FVector::UpVector;
 }
 
-void AChunk::CreateHexagonBottom( const FHexagonVoxel& Voxel,
+void AChunk::GenerateMeshRegions( TMap< FIntVector, TArray< int32 > >& VisibleVoxelCoordinates,
+                                  TArray< FVector >&                   OutVertices,
+                                  TArray< int32 >&                     OutTriangles,
+                                  TArray< FVector >&                   OutNormals,
+                                  TArray< FVector2D >&                 OutUVs ) const
+{
+	for( TPair< FIntVector, TArray< int32 > >& VoxelPlane: VisibleVoxelCoordinates )
+	{
+		TArray< int32 >& Heights = VoxelPlane.Value;
+
+		while( !Heights.IsEmpty() )
+		{
+			TArray< int32 > Region;
+			TArray< int32 > Queue;
+
+			const int32 Start = *Heights.begin();
+			Heights.RemoveAt( 0 );
+			Region.Add( Start );
+			Queue.Add( Start );
+
+			while( !Queue.IsEmpty() )
+			{
+				const int32 Current = Queue.Pop();
+
+				for( const int32 Direction: { 1, -1 } )
+				{
+					int32 Neighbor = Current + Direction;
+					if( !Heights.Contains( Neighbor ) )
+						continue;
+
+					Heights.Remove( Neighbor );
+					Region.Add( Neighbor );
+					Queue.Add( Neighbor );
+				}
+			}
+
+			GenerateMeshPolygon( VoxelPlane.Key, Region, OutVertices, OutTriangles, OutNormals, OutUVs );
+		}
+	}
+}
+
+void AChunk::GenerateMeshPolygon( const int32          PolygonHeight,
+                                  TArray< FIntPoint >& Region,
+                                  const bool           IsTop,
                                   TArray< FVector >&   OutVertices,
                                   TArray< int32 >&     OutTriangles,
                                   TArray< FVector >&   OutNormals,
                                   TArray< FVector2D >& OutUVs ) const
 {
-	const int32   Index        = OutVertices.Num();
-	const FVector BottomCenter = Voxel.WorldLocation;
+	if( Region.IsEmpty() )
+		return;
 
-	OutVertices.Add( BottomCenter );
-	OutUVs.Add( FVector2D( .5f, .5f ) );
+	TMap< FIntVector, FIntVector > EdgeConnections;
+	TMap< FIntVector, FVector >    IntToFloat;
+	TSet                           RegionSet( Region );
 
-	for( int i = 0; i < 6; ++i )
+	for( const FIntPoint& VoxelCoordinate: RegionSet )
 	{
-		const float Angle = FMath::DegreesToRadians( 60 * i );
-		OutVertices.Add( BottomCenter + FVector( FMath::Cos( Angle ), FMath::Sin( Angle ), 0 ) * HexagonRadius );
+		for( int i = 0; i < 6; ++i )
+		{
+			const FIntPoint& Neighbor = VoxelCoordinate + Directions[ i ];
+			if( RegionSet.Contains( Neighbor ) )
+				continue;
 
-		OutTriangles.Add( Index );
-		OutTriangles.Add( Index + 1 + i );
-		OutTriangles.Add( Index + 1 + ( i + 1 ) % 6 );
+			const float Angle1 = FMath::DegreesToRadians( 60 * i );
+			const float Angle2 = FMath::DegreesToRadians( 60 * ( ( i - 1 ) % 6 ) );
 
-		OutUVs.Add( FVector2D( FMath::Cos( Angle ) * .5f + .5f, FMath::Sin( Angle ) * .5f + .5f ) );
+			const FVector Center  = FHexagonVoxel( FIntVector( VoxelCoordinate.X, VoxelCoordinate.Y, PolygonHeight + IsTop ) ).WorldLocation;
+			const FVector Corner1 = Center + FVector( FMath::Cos( Angle1 ), FMath::Sin( Angle1 ), 0 ) * HexagonRadius;
+			const FVector Corner2 = Center + FVector( FMath::Cos( Angle2 ), FMath::Sin( Angle2 ), 0 ) * HexagonRadius;
+
+			const FIntVector IntCorner1( FMath::RoundToInt( Corner1.X ), FMath::RoundToInt( Corner1.Y ), FMath::RoundToInt( Corner1.Z ) );
+			const FIntVector IntCorner2( FMath::RoundToInt( Corner2.X ), FMath::RoundToInt( Corner2.Y ), FMath::RoundToInt( Corner2.Z ) );
+
+			EdgeConnections.Add( IntCorner1, IntCorner2 );
+			IntToFloat.Add( IntCorner1, Corner1 );
+			IntToFloat.Add( IntCorner2, Corner2 );
+		}
 	}
 
-	OutNormals.AddUninitialized( 7 );
-	for( int i = 0; i < 7; ++i )
-		OutNormals[ Index + i ] = FVector::DownVector;
+	if( EdgeConnections.IsEmpty() )
+		return;
+
+	TArray< TArray< FVector > > Polygons;
+	while( !EdgeConnections.IsEmpty() )
+	{
+		TArray< FVector > Loop;
+		const FIntVector  Start   = EdgeConnections.begin().Key();
+		FIntVector        Current = Start;
+
+		while( EdgeConnections.Contains( Current ) )
+		{
+			Loop.Add( IntToFloat.FindChecked( Current ) );
+			Current = EdgeConnections.FindAndRemoveChecked( Current );
+		}
+
+		Polygons.Add( Loop );
+	}
+
+	if( Polygons.IsEmpty() )
+		return;
+
+	int32 OuterLoopIndex = -1;
+	float MaxArea        = 0;
+	for( int i = 0; i < Polygons.Num(); ++i )
+	{
+		const float Area = FMath::Abs( Signed2DPolygonArea( Polygons[ i ] ) );
+		if( Area < MaxArea )
+			continue;
+
+		MaxArea        = Area;
+		OuterLoopIndex = i;
+	}
+
+	TArray< FVector > MainPolygon = Polygons[ OuterLoopIndex ];
+	Polygons.RemoveAt( OuterLoopIndex );
+
+	if( Signed2DPolygonArea( MainPolygon ) < 0 )
+		Algo::Reverse( MainPolygon );
+
+	for( TArray< FVector >& InnerPolygon: Polygons )
+	{
+		if( Signed2DPolygonArea( InnerPolygon ) > 0 )
+			Algo::Reverse( InnerPolygon );
+
+		int32 MainBridgeIndex  = -1;
+		int32 InnerBridgeIndex = -1;
+		float MinDistance      = TNumericLimits< float >::Max();
+
+		for( int i = 0; i < MainPolygon.Num(); ++i )
+		{
+			for( int j = 0; j < InnerPolygon.Num(); ++j )
+			{
+				const float Distance = FVector::DistSquared( MainPolygon[ i ], InnerPolygon[ j ] );
+				if( Distance > MinDistance )
+					continue;
+
+				MinDistance      = Distance;
+				MainBridgeIndex  = i;
+				InnerBridgeIndex = j;
+			}
+		}
+
+		TArray< FVector > NewOuterPolygon;
+		for( int i = 0; i <= MainBridgeIndex; ++i )
+			NewOuterPolygon.Add( MainPolygon[ i ] );
+
+		for( int i = 0; i <= InnerPolygon.Num(); ++i )
+			NewOuterPolygon.Add( InnerPolygon[ ( InnerBridgeIndex + i ) % InnerPolygon.Num() ] );
+
+		for( int i = MainBridgeIndex; i < MainPolygon.Num(); ++i )
+			NewOuterPolygon.Add( MainPolygon[ i ] );
+
+		MainPolygon = NewOuterPolygon;
+	}
+
+	TArray< UE::Geometry::FIndex3i > Triangles;
+	PolygonTriangulation::TriangulateSimplePolygon( MainPolygon, Triangles );
+
+	const int32   Index = OutVertices.Num();
+	const FVector Normal( 0, 0, IsTop ? 1 : -1 );
+	for( const FVector& Vertex: MainPolygon )
+	{
+		OutVertices.Add( Vertex );
+		OutNormals.Add( Normal );
+		OutUVs.Add( FVector2D( Vertex.X / 100, Vertex.Y / 100 ) );
+	}
+
+	for( const UE::Geometry::FIndex3i& Triangle: Triangles )
+	{
+		OutTriangles.Add( Index + Triangle.A );
+		OutTriangles.Add( Index + ( IsTop ? Triangle.B : Triangle.C ) );
+		OutTriangles.Add( Index + ( IsTop ? Triangle.C : Triangle.B ) );
+	}
 }
 
-void AChunk::CreateHexagonSide( const FHexagonVoxel& Voxel,
-                                const int32          SideIndex,
-                                TArray< FVector >&   OutVertices,
-                                TArray< int32 >&     OutTriangles,
-                                TArray< FVector >&   OutNormals,
-                                TArray< FVector2D >& OutUVs ) const
+void AChunk::GenerateMeshPolygon( const FIntVector&    PolygonCoordinate,
+                                  TArray< int32 >&     Region,
+                                  TArray< FVector >&   OutVertices,
+                                  TArray< int32 >&     OutTriangles,
+                                  TArray< FVector >&   OutNormals,
+                                  TArray< FVector2D >& OutUVs ) const
 {
-	const int32   Index        = OutVertices.Num();
-	const FVector BottomCenter = Voxel.WorldLocation;
-	const FVector TopCenter    = BottomCenter + FVector( 0, 0, HexagonHeight );
+	if( Region.IsEmpty() )
+		return;
 
-	const float   Angle1      = FMath::DegreesToRadians( 60 * SideIndex - 60 );
-	const float   Angle2      = FMath::DegreesToRadians( 60 * ( SideIndex + 1 ) - 60 );
+	Region.Sort();
+	const FVector TopCenter    = FHexagonVoxel( FIntVector( PolygonCoordinate.X, PolygonCoordinate.Y, Region.Last() ) ).WorldLocation + FVector( 0, 0, HexagonHeight );
+	const FVector BottomCenter = FHexagonVoxel( FIntVector( PolygonCoordinate.X, PolygonCoordinate.Y, Region[ 0 ] ) ).WorldLocation;
+
+	const int32 Side   = PolygonCoordinate.Z;
+	const float Angle1 = FMath::DegreesToRadians( 60 * Side - 60 );
+	const float Angle2 = FMath::DegreesToRadians( 60 * ( Side + 1 ) - 60 );
+
 	const FVector BottomLeft  = BottomCenter + FVector( FMath::Cos( Angle1 ), FMath::Sin( Angle1 ), 0 ) * HexagonRadius;
 	const FVector BottomRight = BottomCenter + FVector( FMath::Cos( Angle2 ), FMath::Sin( Angle2 ), 0 ) * HexagonRadius;
 	const FVector TopLeft     = TopCenter + FVector( FMath::Cos( Angle1 ), FMath::Sin( Angle1 ), 0 ) * HexagonRadius;
 	const FVector TopRight    = TopCenter + FVector( FMath::Cos( Angle2 ), FMath::Sin( Angle2 ), 0 ) * HexagonRadius;
 
-	OutVertices.Add( BottomLeft );
-	OutVertices.Add( BottomRight );
+	const int32 Index = OutVertices.Num();
 	OutVertices.Add( TopLeft );
 	OutVertices.Add( TopRight );
+	OutVertices.Add( BottomLeft );
+	OutVertices.Add( BottomRight );
 
 	OutTriangles.Add( Index );
-	OutTriangles.Add( Index + 2 );
 	OutTriangles.Add( Index + 1 );
+	OutTriangles.Add( Index + 2 );
 
 	OutTriangles.Add( Index + 1 );
-	OutTriangles.Add( Index + 2 );
 	OutTriangles.Add( Index + 3 );
+	OutTriangles.Add( Index + 2 );
 
-	const float   QuadAngle        = FMath::DegreesToRadians( 60 * SideIndex - 30 );
+	const float   QuadAngle        = FMath::DegreesToRadians( 60 * Side - 30 );
 	const FVector QuadBottomCenter = BottomCenter + FVector( FMath::Cos( QuadAngle ), FMath::Sin( QuadAngle ), 0 ) * HexagonRadius;
 	const FVector Normal           = ( QuadBottomCenter - BottomCenter ).GetSafeNormal2D();
 
@@ -267,7 +440,20 @@ void AChunk::CreateHexagonSide( const FHexagonVoxel& Voxel,
 	OutUVs.Add( FVector2D( 1, 0 ) );
 }
 
-bool AChunk::GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel )
+float AChunk::Signed2DPolygonArea( const TArray< FVector >& Polygon ) const
+{
+	float Area = 0;
+	for( int j = 0; j < Polygon.Num(); ++j )
+	{
+		const FVector& Point1  = Polygon[ j ];
+		const FVector& Point2  = Polygon[ ( j + 1 ) % Polygon.Num() ];
+		Area                  += Point1.X * Point2.Y - Point2.X * Point1.Y;
+	}
+
+	return Area * .5f;
+}
+
+bool AChunk::GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel )
 {
 	const FHexagonVoxel* Voxel = Map.Find( VoxelCoordinate );
 	if( !Voxel )
@@ -277,7 +463,7 @@ bool AChunk::GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FInt
 	return true;
 }
 
-bool AChunk::GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FVector& WorldLocation, FHexagonVoxel& OutVoxel )
+bool AChunk::GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FVector& WorldLocation, FHexagonVoxel& OutVoxel )
 {
 	return GetVoxel( Map, WorldToVoxel( WorldLocation ), OutVoxel );
 }

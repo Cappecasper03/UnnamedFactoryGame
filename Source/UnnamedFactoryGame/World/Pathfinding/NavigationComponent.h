@@ -13,8 +13,8 @@ struct FVoxelNode
 {
 	GENERATED_BODY()
 
-	float       Cost       = 0;
-	FIntVector3 Coordinate = FIntVector3::ZeroValue;
+	float      Cost       = 0;
+	FIntVector Coordinate = FIntVector::ZeroValue;
 
 	float CalculateFutureCost( const FVoxelNode& Other ) const;
 
@@ -35,5 +35,5 @@ public:
 	bool CalculatePath( const FVector& TargetLocation, TArray< FHexagonVoxel >& OutPath ) const;
 
 private:
-	TArray< FHexagonVoxel > ReconstructPath( const TMap< FIntVector3, FIntVector3 >& ParentMap, FIntVector3& CurrentNode ) const;
+	TArray< FHexagonVoxel > ReconstructPath( const TMap< FIntVector, FIntVector >& ParentMap, FIntVector& CurrentNode ) const;
 };

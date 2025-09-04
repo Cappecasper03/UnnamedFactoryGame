@@ -19,47 +19,56 @@ class UNNAMEDFACTORYGAME_API AChunk : public AActor
 public:
 	AChunk();
 
-	UFUNCTION( CallInEditor )
-	void Generate() { Generate( Coordinate ); }
 	void Generate( const FIntPoint& ChunkCoordinate );
 
 	void SetVisible();
 
-	bool GetVoxel( const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel ) const { return GetVoxel( HexagonTiles, VoxelCoordinate, OutVoxel ); }
+	bool GetVoxel( const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel ) const { return GetVoxel( HexagonTiles, VoxelCoordinate, OutVoxel ); }
 	bool GetVoxel( const FVector& WorldLocation, FHexagonVoxel& OutVoxel ) const { return GetVoxel( HexagonTiles, WorldLocation, OutVoxel ); }
 
-	static FVector VoxelToWorld( const FIntVector3& VoxelCoordinate ) { return FHexagonVoxel( VoxelCoordinate ).WorldLocation; }
+	static FVector VoxelToWorld( const FIntVector& VoxelCoordinate ) { return FHexagonVoxel( VoxelCoordinate ).WorldLocation; }
 	static FVector ChunkToWorld( const FIntPoint& ChunkCoordinate );
 
-	static FIntVector3 WorldToVoxel( const FVector& WorldLocation );
-	static FIntPoint   VoxelToChunk( const FIntVector3& VoxelCoordinate );
-	static FIntPoint   WorldToChunk( const FVector& WorldLocation );
+	static FIntVector WorldToVoxel( const FVector& WorldLocation );
+	static FIntPoint  VoxelToChunk( const FIntVector& VoxelCoordinate );
+	static FIntPoint  WorldToChunk( const FVector& WorldLocation );
 
 private:
 	void GenerateVoxels();
-	void GenerateMesh( const TMap< FIntVector3, FHexagonVoxel >& HexagonVoxels );
+	void GenerateMesh( const TMap< FIntVector, FHexagonVoxel >& HexagonVoxels );
 
-	void CreateHexagonTop( const FHexagonVoxel& Voxel,
-	                       TArray< FVector >&   OutVertices,
-	                       TArray< int32 >&     OutTriangles,
-	                       TArray< FVector >&   OutNormals,
-	                       TArray< FVector2D >& OutUVs ) const;
-	void CreateHexagonBottom( const FHexagonVoxel& Voxel,
+	void GenerateMeshRegions( TMap< int32, TArray< FIntPoint > >& VisibleVoxelCoordinates,
+	                          bool                                IsTop,
+	                          TArray< FVector >&                  OutVertices,
+	                          TArray< int32 >&                    OutTriangles,
+	                          TArray< FVector >&                  OutNormals,
+	                          TArray< FVector2D >&                OutUVs ) const;
+	void GenerateMeshRegions( TMap< FIntVector, TArray< int32 > >& VisibleVoxelCoordinates,
+	                          TArray< FVector >&                   OutVertices,
+	                          TArray< int32 >&                     OutTriangles,
+	                          TArray< FVector >&                   OutNormals,
+	                          TArray< FVector2D >&                 OutUVs ) const;
+
+	void GenerateMeshPolygon( int32                PolygonHeight,
+	                          TArray< FIntPoint >& Region,
+	                          bool                 IsTop,
 	                          TArray< FVector >&   OutVertices,
 	                          TArray< int32 >&     OutTriangles,
 	                          TArray< FVector >&   OutNormals,
 	                          TArray< FVector2D >& OutUVs ) const;
-	void CreateHexagonSide( const FHexagonVoxel& Voxel,
-	                        int32                SideIndex,
-	                        TArray< FVector >&   OutVertices,
-	                        TArray< int32 >&     OutTriangles,
-	                        TArray< FVector >&   OutNormals,
-	                        TArray< FVector2D >& OutUVs ) const;
+	void GenerateMeshPolygon( const FIntVector&    PolygonCoordinate,
+	                          TArray< int32 >&     Region,
+	                          TArray< FVector >&   OutVertices,
+	                          TArray< int32 >&     OutTriangles,
+	                          TArray< FVector >&   OutNormals,
+	                          TArray< FVector2D >& OutUVs ) const;
 
-	static bool GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FIntVector3& VoxelCoordinate, FHexagonVoxel& OutVoxel );
-	static bool GetVoxel( const TMap< FIntVector3, FHexagonVoxel >& Map, const FVector& WorldLocation, FHexagonVoxel& OutVoxel );
+	float Signed2DPolygonArea( const TArray< FVector >& Polygon ) const;
 
-	TMap< FIntVector3, FHexagonVoxel > HexagonTiles;
+	static bool GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel );
+	static bool GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FVector& WorldLocation, FHexagonVoxel& OutVoxel );
+
+	TMap< FIntVector, FHexagonVoxel > HexagonTiles;
 
 	FIntPoint Coordinate = FIntPoint::ZeroValue;
 
