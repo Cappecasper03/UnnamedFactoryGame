@@ -7,8 +7,9 @@
 
 UWorldGenerationSubSystem::UWorldGenerationSubSystem()
 {
-	const ConstructorHelpers::FClassFinder< AChunk > ClassFinder( TEXT( "/Game/Blueprints/World/Generation/Chunk_BP" ) );
-	ChunkClass = ClassFinder.Class;
+	static ConstructorHelpers::FClassFinder< AChunk > MaterialFinder( TEXT( "/Game/Blueprints/World/Generation/Chunk_BP" ) );
+	if( MaterialFinder.Succeeded() )
+		ChunkClass = MaterialFinder.Class;
 }
 
 void UWorldGenerationSubSystem::Tick( const float DeltaTime )

@@ -41,23 +41,27 @@ private:
 	                          bool                                IsTop,
 	                          TArray< FVector >&                  OutVertices,
 	                          TArray< int32 >&                    OutTriangles,
-	                          TArray< FVector >&                  OutNormals ) const;
+	                          TArray< FVector >&                  OutNormals,
+	                          TArray< FVector2D >&                OutUVs ) const;
 	void GenerateMeshRegions( TMap< FIntVector, TArray< int32 > >& VisibleVoxelCoordinates,
 	                          TArray< FVector >&                   OutVertices,
 	                          TArray< int32 >&                     OutTriangles,
-	                          TArray< FVector >&                   OutNormals ) const;
+	                          TArray< FVector >&                   OutNormals,
+	                          TArray< FVector2D >&                 OutUVs ) const;
 
 	void GenerateMeshPolygon( int32                PolygonHeight,
 	                          TArray< FIntPoint >& Region,
 	                          bool                 IsTop,
 	                          TArray< FVector >&   OutVertices,
 	                          TArray< int32 >&     OutTriangles,
-	                          TArray< FVector >&   OutNormals ) const;
-	void GenerateMeshPolygon( const FIntVector&  PolygonCoordinate,
-	                          TArray< int32 >&   Region,
-	                          TArray< FVector >& OutVertices,
-	                          TArray< int32 >&   OutTriangles,
-	                          TArray< FVector >& OutNormals ) const;
+	                          TArray< FVector >&   OutNormals,
+	                          TArray< FVector2D >& OutUVs ) const;
+	void GenerateMeshPolygon( const FIntVector&    PolygonCoordinate,
+	                          TArray< int32 >&     Region,
+	                          TArray< FVector >&   OutVertices,
+	                          TArray< int32 >&     OutTriangles,
+	                          TArray< FVector >&   OutNormals,
+	                          TArray< FVector2D >& OutUVs ) const;
 
 	float Signed2DPolygonArea( const TArray< FVector >& Polygon ) const;
 
