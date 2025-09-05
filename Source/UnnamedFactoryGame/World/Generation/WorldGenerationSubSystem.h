@@ -35,6 +35,8 @@ public:
 private:
 	bool GenerateChunk( FIntPoint Chunk );
 
+	bool IsWithinDistance( const FIntPoint& Current, const FIntPoint& Other ) const;
+
 	TMap< FIntPoint, TObjectPtr< AChunk > > Chunks;
 
 	UPROPERTY()

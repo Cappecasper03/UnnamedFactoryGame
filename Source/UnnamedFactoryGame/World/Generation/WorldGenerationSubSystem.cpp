@@ -25,7 +25,8 @@ void UWorldGenerationSubSystem::Tick( const float DeltaTime )
 	{
 		for( int R = -GenerationDistance; R < GenerationDistance; R++ )
 		{
-			if( GenerateChunk( Chunk + FIntPoint( Q, R ) ) )
+			FIntPoint Other = Chunk + FIntPoint( Q, R );
+			if( IsWithinDistance( Chunk, Other ) && GenerateChunk( Other ) )
 				return;
 		}
 	}
@@ -91,4 +92,12 @@ bool UWorldGenerationSubSystem::GenerateChunk( const FIntPoint Chunk )
 	ChunkActor->SetVisible();
 	Chunks.Add( Chunk, ChunkActor );
 	return true;
+}
+bool UWorldGenerationSubSystem::IsWithinDistance( const FIntPoint& Current, const FIntPoint& Other ) const
+{
+	const int32 SCurrent = -Current.X - Current.Y;
+	const int32 SOther   = -Other.X - Other.Y;
+	const int32 Distance = ( FMath::Abs( Current.X - Other.X ) + FMath::Abs( Current.Y - Other.Y ) + FMath::Abs( SCurrent - SOther ) ) / 2;
+
+	return Distance < GenerationDistance;
 }
