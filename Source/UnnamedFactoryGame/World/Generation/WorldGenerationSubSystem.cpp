@@ -23,7 +23,10 @@ void UWorldGenerationSubSystem::Tick( const float DeltaTime )
 	for( int Q = -GenerationDistance; Q < GenerationDistance; Q++ )
 	{
 		for( int R = -GenerationDistance; R < GenerationDistance; R++ )
-			GenerateChunk( Chunk + FIntPoint( Q, R ) );
+		{
+			if( GenerateChunk( Chunk + FIntPoint( Q, R ) ) )
+				return;
+		}
 	}
 }
 
@@ -72,13 +75,13 @@ bool UWorldGenerationSubSystem::GetVoxel( const FIntVector& VoxelCoordinate, FHe
 	return true;
 }
 
-void UWorldGenerationSubSystem::GenerateChunk( const FIntPoint Chunk )
+bool UWorldGenerationSubSystem::GenerateChunk( const FIntPoint Chunk )
 {
 	const TObjectPtr< AChunk >* ChunkActorPtr = Chunks.Find( Chunk );
 	if( ChunkActorPtr )
 	{
 		( *ChunkActorPtr )->SetVisible();
-		return;
+		return false;
 	}
 
 	const FVector WorldLocation = AChunk::ChunkToWorld( Chunk );
@@ -86,4 +89,5 @@ void UWorldGenerationSubSystem::GenerateChunk( const FIntPoint Chunk )
 	ChunkActor->Generate( Chunk );
 	ChunkActor->SetVisible();
 	Chunks.Add( Chunk, ChunkActor );
+	return true;
 }

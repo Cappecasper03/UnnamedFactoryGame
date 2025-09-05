@@ -33,7 +33,7 @@ public:
 	bool GetVoxel( const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel );
 
 private:
-	void GenerateChunk( FIntPoint Chunk );
+	bool GenerateChunk( FIntPoint Chunk );
 
 	TMap< FIntPoint, TObjectPtr< AChunk > > Chunks;
 

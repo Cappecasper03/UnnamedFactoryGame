@@ -117,9 +117,9 @@ void AChunk::GenerateVoxels()
 				   const int ROffset = Coordinate.Y * Size;
 
 				   TMap< FIntVector, FHexagonVoxel > HexagonVoxels;
-				   for( int Q = 0; Q < Size; ++Q )
+				   for( int Q = -1; Q <= Size; ++Q )
 				   {
-					   for( int R = 0; R < Size; ++R )
+					   for( int R = -1; R <= Size; ++R )
 					   {
 						   const float PerlinNoise = FMath::PerlinNoise2D( FVector2D( Q + QOffset, R + ROffset ) * NoiseScale );
 						   const int64 TileHeight  = FMath::RoundToInt( FMath::GetMappedRangeValueClamped( FVector2D( -1.0f, 1.0f ), FVector2D( 0, Height ), PerlinNoise ) );
@@ -140,6 +140,9 @@ void AChunk::GenerateVoxels()
 
 void AChunk::GenerateMesh( const TMap< FIntVector, FHexagonVoxel >& HexagonVoxels )
 {
+	const int QOffset = Coordinate.X * Size;
+	const int ROffset = Coordinate.Y * Size;
+
 	TMap< int32, TArray< FIntPoint > >  TopVisibleVoxels;
 	TMap< int32, TArray< FIntPoint > >  BottomVisibleVoxels;
 	TMap< FIntVector, TArray< int32 > > SideVisibleVoxels;
@@ -150,6 +153,9 @@ void AChunk::GenerateMesh( const TMap< FIntVector, FHexagonVoxel >& HexagonVoxel
 		const FIntVector&    VoxelCoordinate = Voxel.GridLocation;
 
 		if( Voxel.Type == EVoxelType::Air )
+			continue;
+
+		if( VoxelCoordinate.X == QOffset - 1 || VoxelCoordinate.X == QOffset + Size || VoxelCoordinate.Y == ROffset - 1 || VoxelCoordinate.Y == ROffset + Size )
 			continue;
 
 		FHexagonVoxel TopVoxel;
