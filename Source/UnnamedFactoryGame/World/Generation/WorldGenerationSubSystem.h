@@ -33,7 +33,7 @@ public:
 	bool GetVoxel( const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel );
 
 private:
-	bool GenerateChunk( FIntPoint Chunk );
+	bool UpdateChunk( const FIntPoint& Chunk, bool OnlyVisibility );
 
 	bool IsWithinDistance( const FIntPoint& Current, const FIntPoint& Other ) const;
 
