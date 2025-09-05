@@ -49,5 +49,8 @@
 			"Name": "RuntimeTelemetry",
 			"Enabled": false
 		}
+	],
+	"TargetPlatforms": [
+		"Windows"
 	]
 }

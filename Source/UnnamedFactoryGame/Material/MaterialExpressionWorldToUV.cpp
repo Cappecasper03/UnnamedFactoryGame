@@ -13,10 +13,8 @@ int32 UMaterialExpressionWorldToUV::Compile( FMaterialCompiler* Compiler, const 
 
 	const int32 XWorldLocationID = Compiler->ComponentMask( WorldLocationID, true, false, false, false );
 	const int32 YWorldLocationID = Compiler->ComponentMask( WorldLocationID, false, true, false, false );
-	const int32 ZWorldLocationID = Compiler->ComponentMask( WorldLocationID, false, false, true, false );
 
 	const int32 HexagonRadiusID = Compiler->Constant( HexagonRadius );
-	const int32 HexagonHeightID = Compiler->Constant( HexagonHeight );
 
 	const int32 TwoThirdsID     = Compiler->Constant( 2.f / 3.f );
 	const int32 NegativeThirdID = Compiler->Constant( -1.f / 3.f );
@@ -45,7 +43,6 @@ int32 UMaterialExpressionWorldToUV::Compile( FMaterialCompiler* Compiler, const 
 
 	const int32 QCoordinateID = Compiler->If( QDiffID, RAndSMaxID, NewQCoordinateID, QRoundedID, QRoundedID, ZeroID );
 	const int32 RCoordinateID = Compiler->If( QDiffID, RAndSMaxID, RRoundedID, NewRCoordinateID, NewRCoordinateID, ZeroID );
-	const int32 ZCoordinateID = Compiler->Round( Compiler->Div( ZWorldLocationID, HexagonHeightID ) );
 
 	// Convert voxel coordinate to world location
 	const int32 Root3ID         = Compiler->Constant( Root3 );
@@ -54,12 +51,10 @@ int32 UMaterialExpressionWorldToUV::Compile( FMaterialCompiler* Compiler, const 
 
 	const int32 XWorldID = Compiler->Mul( HexagonRadiusID, Compiler->Mul( OneAndHalfID, QCoordinateID ) );
 	const int32 YWorldID = Compiler->Mul( HexagonRadiusID, Compiler->Add( Compiler->Mul( Root3ID, RCoordinateID ), Compiler->Mul( Root3Divided2ID, QCoordinateID ) ) );
-	const int32 ZWorldID = Compiler->Mul( HexagonHeightID, ZCoordinateID );
 
 	// Convert to local location
 	const int32 XPixelDiffID = Compiler->Sub( XWorldID, XWorldLocationID );
 	const int32 YPixelDiffID = Compiler->Sub( YWorldID, YWorldLocationID );
-	const int32 ZPixelDiffID = Compiler->Sub( ZWorldID, ZWorldLocationID );
 
 	// Convert to uv
 	const int32 DoubleHexagonRadiusID = Compiler->Constant( HexagonRadius * 2 );
