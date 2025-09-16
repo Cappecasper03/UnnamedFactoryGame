@@ -10,6 +10,7 @@
 #include "GameFramework/PawnMovementComponent.h"
 #include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
+#include "Tools/ToolManagerComponent.h"
 #include "UnnamedFactoryGame/UnnamedFactoryGame.h"
 #include "UnnamedFactoryGame/World/Generation/Chunk.h"
 
@@ -17,18 +18,12 @@ AFactoryPlayer::AFactoryPlayer()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	CameraComponent = CreateDefaultSubobject< UCameraComponent >( FName( "CameraComponent" ) );
+	CameraComponent = CreateDefaultSubobject< UCameraComponent >( TEXT( "CameraComponent" ) );
 	RootComponent   = CameraComponent;
 
-	MovementComponent = CreateDefaultSubobject< UPawnMovementComponent, UFloatingPawnMovement >( FName( "MovementComponent" ) );
-}
+	MovementComponent = CreateDefaultSubobject< UPawnMovementComponent, UFloatingPawnMovement >( TEXT( "MovementComponent" ) );
 
-void AFactoryPlayer::Tick( const float DeltaSeconds )
-{
-	Super::Tick( DeltaSeconds );
-
-	if( IsInteractiveMode )
-		UpdateInteractableData();
+	ToolManager = CreateDefaultSubobject< UToolManagerComponent >( TEXT( "ToolManager" ) );
 }
 
 void AFactoryPlayer::SetupPlayerInputComponent( UInputComponent* PlayerInputComponent )
@@ -73,20 +68,6 @@ AFactoryPlayer* AFactoryPlayer::Get( const UObject* WorldContextObject )
 		return nullptr;
 
 	return Cast< AFactoryPlayer >( UGameplayStatics::GetPlayerPawn( WorldContextObject->GetWorld(), 0 ) );
-}
-
-void AFactoryPlayer::UpdateInteractableData()
-{
-	const AFactoryPlayerController* PlayerController = AFactoryPlayerController::Get( this );
-
-	FVector Location;
-	FVector Direction;
-	PlayerController->DeprojectMousePositionToWorld( Location, Direction );
-
-	if( !GetWorld()->LineTraceSingleByChannel( InteractableData, GetActorLocation(), GetActorLocation() + Direction * 5000, ECC_Visibility ) )
-		return;
-
-	DrawDebugSphere( GetWorld(), InteractableData.ImpactPoint, 10, 20, FColor::Red );
 }
 
 void AFactoryPlayer::MoveForwardBackwardInput( const FInputActionInstance& Instance )
@@ -148,8 +129,12 @@ void AFactoryPlayer::ChangeSpeedInput( const FInputActionInstance& Instance )
 {
 	const float Value = Instance.GetValue().Get< float >();
 
-	SpeedMultiplier += Value / 10;
-	SpeedMultiplier  = FMath::Clamp( SpeedMultiplier, .1f, 1 );
+	if( IsInteractiveMode ) {}
+	else
+	{
+		SpeedMultiplier += Value / 10;
+		SpeedMultiplier  = FMath::Clamp( SpeedMultiplier, .1f, 1 );
+	}
 }
 
 void AFactoryPlayer::ToggleInteractiveModeInput()
@@ -174,26 +159,14 @@ void AFactoryPlayer::ToggleInteractiveModeInput()
 		PlayerController->SetInputMode( InputMode );
 	}
 	else
+	{
 		PlayerController->SetInputMode( FInputModeGameOnly() );
+		ToolManager->DeactivateTool();
+	}
 }
 
 void AFactoryPlayer::SelectInteractableInput()
 {
 	if( !IsInteractiveMode )
 		return;
-
-	const AActor* Actor = InteractableData.GetActor();
-	if( !IsValid( Actor ) )
-		return;
-
-	if( Actor->IsA( AChunk::StaticClass() ) )
-	{
-		const AChunk* Chunk = Cast< AChunk >( Actor );
-		FHexagonVoxel Voxel;
-		if( !Chunk->GetVoxel( InteractableData.ImpactPoint - InteractableData.ImpactNormal * 10, Voxel ) )
-			return;
-
-		DrawDebugSphere( GetWorld(), Voxel.WorldLocation, 10, 20, FColor::Red, false, 5 );
-	}
-	else {}
 }

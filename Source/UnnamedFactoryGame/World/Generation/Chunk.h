@@ -23,40 +23,36 @@ public:
 
 	void SetVisible();
 
-	bool GetVoxel( const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel ) const { return GetVoxel( HexagonTiles, VoxelCoordinate, OutVoxel ); }
-	bool GetVoxel( const FVector& WorldLocation, FHexagonVoxel& OutVoxel ) const { return GetVoxel( HexagonTiles, WorldLocation, OutVoxel ); }
+	bool GetVoxel( const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel ) const { return FHexagonVoxel::GetVoxel( HexagonTiles, VoxelCoordinate, OutVoxel ); }
+	bool GetVoxel( const FVector& WorldLocation, FHexagonVoxel& OutVoxel ) const { return FHexagonVoxel::GetVoxel( HexagonTiles, WorldLocation, OutVoxel ); }
 
-	static FVector VoxelToWorld( const FIntVector& VoxelCoordinate ) { return FHexagonVoxel( VoxelCoordinate ).WorldLocation; }
 	static FVector ChunkToWorld( const FIntPoint& ChunkCoordinate );
 
-	static FIntVector WorldToVoxel( const FVector& WorldLocation );
-	static FIntPoint  VoxelToChunk( const FIntVector& VoxelCoordinate );
-	static FIntPoint  WorldToChunk( const FVector& WorldLocation );
+	static FIntPoint VoxelToChunk( const FIntVector& VoxelCoordinate );
+	static FIntPoint WorldToChunk( const FVector& WorldLocation );
+
+protected:
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Chunk" )
+	TObjectPtr< UProceduralHexagonMeshComponent > Mesh;
 
 private:
 	void GenerateVoxels();
-
-	static bool GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel );
-	static bool GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FVector& WorldLocation, FHexagonVoxel& OutVoxel );
 
 	TMap< FIntVector, FHexagonVoxel > HexagonTiles;
 
 	FIntPoint Coordinate = FIntPoint::ZeroValue;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Chunk" )
-	TObjectPtr< UProceduralHexagonMeshComponent > ProceduralMesh;
-
+	int32 Size = 16;
 	UPROPERTY( EditDefaultsOnly, Category = "Chunk" )
-	int Size = 16;
-	UPROPERTY( EditDefaultsOnly, Category = "Chunk" )
-	int Height = 32;
+	int32 Height = 32;
 	UPROPERTY( EditDefaultsOnly, Category = "Chunk" )
 	float NoiseScale = .02f;
 
 	FTimerHandle VisibilityTimer;
 	FTimerHandle LoadedTimer;
 
-	static int   StaticSize;
-	static int   StaticHeight;
+	static int32 StaticSize;
+	static int32 StaticHeight;
 	static float StaticNoiseScale;
 };

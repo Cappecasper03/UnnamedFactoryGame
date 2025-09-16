@@ -3,9 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HexagonVoxel.h"
 #include "ProceduralMeshComponent.h"
 
 #include "ProceduralHexagonMeshComponent.generated.h"
+
+DECLARE_DELEGATE_RetVal_OneParam( bool, FSkipGenerationDelegate, FHexagonVoxel );
 
 UCLASS( ClassGroup = ( Custom ), meta = ( BlueprintSpawnableComponent ) )
 class UNNAMEDFACTORYGAME_API UProceduralHexagonMeshComponent : public UProceduralMeshComponent
@@ -13,9 +16,7 @@ class UNNAMEDFACTORYGAME_API UProceduralHexagonMeshComponent : public UProcedura
 	GENERATED_BODY()
 
 public:
-	void Generate( TMap< int32, TArray< FIntPoint > >&  TopVisibleVoxels,
-	               TMap< int32, TArray< FIntPoint > >&  BottomVisibleVoxels,
-	               TMap< FIntVector, TArray< int32 > >& SideVisibleVoxels );
+	void Generate( const TMap< FIntVector, FHexagonVoxel >& HexagonVoxels, bool GenerateCollision = false, FSkipGenerationDelegate SkipGenerationDelegate = nullptr );
 
 private:
 	void GenerateRegions( TMap< int32, TArray< FIntPoint > >& VisibleVoxelCoordinates,

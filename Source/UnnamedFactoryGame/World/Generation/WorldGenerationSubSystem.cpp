@@ -7,9 +7,9 @@
 
 UWorldGenerationSubSystem::UWorldGenerationSubSystem()
 {
-	static ConstructorHelpers::FClassFinder< AChunk > MaterialFinder( TEXT( "/Game/Blueprints/World/Generation/Chunk_BP" ) );
-	if( MaterialFinder.Succeeded() )
-		ChunkClass = MaterialFinder.Class;
+	static ConstructorHelpers::FClassFinder< AChunk > ClassFinder( TEXT( "/Game/Blueprints/World/Generation/Chunk_BP" ) );
+	if( ClassFinder.Succeeded() )
+		ChunkClass = ClassFinder.Class;
 }
 
 void UWorldGenerationSubSystem::Tick( const float DeltaTime )
@@ -22,9 +22,9 @@ void UWorldGenerationSubSystem::Tick( const float DeltaTime )
 
 	int32           ChunksGenerated = 0;
 	const FIntPoint Chunk           = AChunk::WorldToChunk( Player->GetActorLocation() );
-	for( int Q = -GenerationDistance; Q < GenerationDistance; Q++ )
+	for( int32 Q = -GenerationDistance; Q < GenerationDistance; Q++ )
 	{
-		for( int R = -GenerationDistance; R < GenerationDistance; R++ )
+		for( int32 R = -GenerationDistance; R < GenerationDistance; R++ )
 		{
 			FIntPoint Other = Chunk + FIntPoint( Q, R );
 			if( IsWithinDistance( Chunk, Other ) && UpdateChunk( Other, ChunksGenerated > 0 ) )
@@ -60,7 +60,7 @@ bool UWorldGenerationSubSystem::GetVoxel( const FVector& WorldLocation, FHexagon
 	if( !IsValid( Chunk ) )
 		return false;
 
-	if( !Chunk->GetVoxel( AChunk::WorldToVoxel( WorldLocation ), OutVoxel ) )
+	if( !Chunk->GetVoxel( FHexagonVoxel::WorldToVoxel( WorldLocation ), OutVoxel ) )
 		return false;
 
 	return true;

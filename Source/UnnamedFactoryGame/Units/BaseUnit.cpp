@@ -10,17 +10,17 @@ ABaseUnit::ABaseUnit()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	RootComponent = CreateDefaultSubobject< USceneComponent >( FName( "SceneComponent" ) );
+	RootComponent = CreateDefaultSubobject< USceneComponent >( TEXT( "SceneComponent" ) );
 
-	MeshComponent = CreateDefaultSubobject< UStaticMeshComponent >( FName( "MeshComponent" ) );
+	MeshComponent = CreateDefaultSubobject< UStaticMeshComponent >( TEXT( "MeshComponent" ) );
 	MeshComponent->SetupAttachment( RootComponent );
 
-	CollisionComponent = CreateDefaultSubobject< UBoxComponent >( FName( "CollisionComponent" ) );
+	CollisionComponent = CreateDefaultSubobject< UBoxComponent >( TEXT( "CollisionComponent" ) );
 	CollisionComponent->SetupAttachment( MeshComponent );
 	CollisionComponent->SetBoxExtent( FVector( 50 ) );
 
-	MovementComponent   = CreateDefaultSubobject< UFloatingPawnMovement >( FName( "MovementComponent" ) );
-	NavigationComponent = CreateDefaultSubobject< UNavigationComponent >( FName( "NavigationComponent" ) );
+	MovementComponent   = CreateDefaultSubobject< UFloatingPawnMovement >( TEXT( "MovementComponent" ) );
+	NavigationComponent = CreateDefaultSubobject< UNavigationComponent >( TEXT( "NavigationComponent" ) );
 }
 
 void ABaseUnit::Tick( const float DeltaSeconds )
@@ -38,4 +38,7 @@ void ABaseUnit::Tick( const float DeltaSeconds )
 		CurrentPath.RemoveAt( 0 );
 }
 
-void ABaseUnit::MoveTo( const FVector& Location ) { NavigationComponent->CalculatePath( Location, CurrentPath ); }
+void ABaseUnit::MoveTo( const FVector& Location )
+{
+	NavigationComponent->CalculatePath( Location, CurrentPath );
+}

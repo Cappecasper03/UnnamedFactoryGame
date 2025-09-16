@@ -27,10 +27,44 @@ struct FHexagonVertexKey
 	}
 };
 
-void UProceduralHexagonMeshComponent::Generate( TMap< int32, TArray< FIntPoint > >&  TopVisibleVoxels,
-                                                TMap< int32, TArray< FIntPoint > >&  BottomVisibleVoxels,
-                                                TMap< FIntVector, TArray< int32 > >& SideVisibleVoxels )
+void UProceduralHexagonMeshComponent::Generate( const TMap< FIntVector, FHexagonVoxel >& HexagonVoxels,
+                                                const bool                               GenerateCollision,
+                                                FSkipGenerationDelegate                  SkipGenerationDelegate )
 {
+	TMap< int32, TArray< FIntPoint > >  TopVisibleVoxels;
+	TMap< int32, TArray< FIntPoint > >  BottomVisibleVoxels;
+	TMap< FIntVector, TArray< int32 > > SideVisibleVoxels;
+
+	for( const TPair< FIntVector, FHexagonVoxel >& HexagonTile: HexagonVoxels )
+	{
+		const FHexagonVoxel& Voxel           = HexagonTile.Value;
+		const FIntVector&    VoxelCoordinate = Voxel.GridLocation;
+
+		if( Voxel.Type == EVoxelType::Air )
+			continue;
+
+		if( SkipGenerationDelegate.IsBound() && SkipGenerationDelegate.Execute( Voxel ) )
+			continue;
+
+		FHexagonVoxel TopVoxel;
+		if( !FHexagonVoxel::GetVoxel( HexagonVoxels, VoxelCoordinate + FIntVector( 0, 0, 1 ), TopVoxel ) || TopVoxel.Type == EVoxelType::Air )
+			TopVisibleVoxels.FindOrAdd( VoxelCoordinate.Z ).Add( FIntPoint( VoxelCoordinate.X, VoxelCoordinate.Y ) );
+
+		FHexagonVoxel BottomVoxel;
+		if( !FHexagonVoxel::GetVoxel( HexagonVoxels, VoxelCoordinate - FIntVector( 0, 0, 1 ), BottomVoxel ) || BottomVoxel.Type == EVoxelType::Air )
+			BottomVisibleVoxels.FindOrAdd( VoxelCoordinate.Z ).Add( FIntPoint( VoxelCoordinate.X, VoxelCoordinate.Y ) );
+
+		for( int32 i = 0; i < 6; ++i )
+		{
+			const FIntPoint  Direction      = CoordinateDirections[ i ];
+			const FIntVector SideCoordinate = { VoxelCoordinate.X + Direction.X, VoxelCoordinate.Y + Direction.Y, VoxelCoordinate.Z };
+
+			FHexagonVoxel SideVoxel;
+			if( !FHexagonVoxel::GetVoxel( HexagonVoxels, SideCoordinate, SideVoxel ) || SideVoxel.Type == EVoxelType::Air )
+				SideVisibleVoxels.FindOrAdd( FIntVector( VoxelCoordinate.X, VoxelCoordinate.Y, i ) ).Add( VoxelCoordinate.Z );
+		}
+	}
+
 	TArray< FVector >   Vertices;
 	TArray< int32 >     Triangles;
 	TArray< FVector >   Normals;
@@ -41,14 +75,14 @@ void UProceduralHexagonMeshComponent::Generate( TMap< int32, TArray< FIntPoint >
 	GenerateRegions( SideVisibleVoxels, Vertices, Triangles, Normals, UVs );
 
 	AsyncTask( ENamedThreads::GameThread,
-	           [ this, Vertices, Triangles, Normals, UVs ]
+	           [ this, Vertices, Triangles, Normals, UVs, GenerateCollision ]
 	           {
 				   if( Vertices.IsEmpty() )
 					   return;
 
 				   const TArray< FLinearColor >     VertexColors;
 				   const TArray< FProcMeshTangent > Tangents;
-				   CreateMeshSection_LinearColor( 0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, true );
+				   CreateMeshSection_LinearColor( 0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, GenerateCollision );
 			   } );
 }
 
@@ -77,7 +111,7 @@ void UProceduralHexagonMeshComponent::GenerateRegions( TMap< int32, TArray< FInt
 			{
 				const FIntPoint Current = Queue.Pop();
 
-				for( const FIntPoint& Direction: Directions )
+				for( const FIntPoint& Direction: CoordinateDirections )
 				{
 					FIntPoint Neighbor = Current + Direction;
 					if( !Coordinates.Contains( Neighbor ) )
@@ -151,14 +185,14 @@ void UProceduralHexagonMeshComponent::GeneratePolygon( const int32          Poly
 
 	for( const FIntPoint& VoxelCoordinate: Region )
 	{
-		for( int i = 0; i < 6; ++i )
+		for( int32 i = 0; i < 6; ++i )
 		{
-			const FIntPoint& Neighbor = VoxelCoordinate + Directions[ i ];
+			const FIntPoint& Neighbor = VoxelCoordinate + CoordinateDirections[ i ];
 			if( Region.Contains( Neighbor ) )
 				continue;
 
-			const FIntPoint& ThirdHexagon1 = VoxelCoordinate + Directions[ ( i + 5 ) % 6 ];
-			const FIntPoint& ThirdHexagon2 = VoxelCoordinate + Directions[ ( i + 1 ) % 6 ];
+			const FIntPoint& ThirdHexagon1 = VoxelCoordinate + CoordinateDirections[ ( i + 5 ) % 6 ];
+			const FIntPoint& ThirdHexagon2 = VoxelCoordinate + CoordinateDirections[ ( i + 1 ) % 6 ];
 
 			const FHexagonVertexKey Key1( VoxelCoordinate, Neighbor, ThirdHexagon1 );
 			const FHexagonVertexKey Key2( VoxelCoordinate, Neighbor, ThirdHexagon2 );
@@ -202,7 +236,7 @@ void UProceduralHexagonMeshComponent::GeneratePolygon( const int32          Poly
 
 	int32 OuterLoopIndex = -1;
 	float MaxArea        = 0;
-	for( int i = 0; i < Polygons.Num(); ++i )
+	for( int32 i = 0; i < Polygons.Num(); ++i )
 	{
 		const float Area = FMath::Abs( Signed2DPolygonArea( Polygons[ i ] ) );
 		if( Area < MaxArea )
@@ -227,9 +261,9 @@ void UProceduralHexagonMeshComponent::GeneratePolygon( const int32          Poly
 		int32 InnerBridgeIndex = -1;
 		float MinDistance      = TNumericLimits< float >::Max();
 
-		for( int i = 0; i < MainPolygon.Num(); ++i )
+		for( int32 i = 0; i < MainPolygon.Num(); ++i )
 		{
-			for( int j = 0; j < InnerPolygon.Num(); ++j )
+			for( int32 j = 0; j < InnerPolygon.Num(); ++j )
 			{
 				const float Distance = FVector::DistSquared( MainPolygon[ i ], InnerPolygon[ j ] );
 				if( Distance > MinDistance )
@@ -242,13 +276,13 @@ void UProceduralHexagonMeshComponent::GeneratePolygon( const int32          Poly
 		}
 
 		TArray< FVector > NewOuterPolygon;
-		for( int i = 0; i <= MainBridgeIndex; ++i )
+		for( int32 i = 0; i <= MainBridgeIndex; ++i )
 			NewOuterPolygon.Add( MainPolygon[ i ] );
 
-		for( int i = 0; i <= InnerPolygon.Num(); ++i )
+		for( int32 i = 0; i <= InnerPolygon.Num(); ++i )
 			NewOuterPolygon.Add( InnerPolygon[ ( InnerBridgeIndex + i ) % InnerPolygon.Num() ] );
 
-		for( int i = MainBridgeIndex; i < MainPolygon.Num(); ++i )
+		for( int32 i = MainBridgeIndex; i < MainPolygon.Num(); ++i )
 			NewOuterPolygon.Add( MainPolygon[ i ] );
 
 		MainPolygon = NewOuterPolygon;
@@ -315,7 +349,7 @@ void UProceduralHexagonMeshComponent::GeneratePolygon( const FIntVector&    Poly
 	const FVector QuadBottomCenter = BottomCenter + FVector( FMath::Cos( QuadAngle ), FMath::Sin( QuadAngle ), 0 ) * HexagonRadius;
 	const FVector Normal           = ( QuadBottomCenter - BottomCenter ).GetSafeNormal2D();
 
-	for( int i = 0; i < 4; ++i )
+	for( int32 i = 0; i < 4; ++i )
 		OutNormals.Add( Normal );
 
 	OutUVs.Add( FVector2D( 0, 1 ) );
@@ -327,7 +361,7 @@ void UProceduralHexagonMeshComponent::GeneratePolygon( const FIntVector&    Poly
 float UProceduralHexagonMeshComponent::Signed2DPolygonArea( const TArray< FVector >& Polygon ) const
 {
 	float Area = 0;
-	for( int j = 0; j < Polygon.Num(); ++j )
+	for( int32 j = 0; j < Polygon.Num(); ++j )
 	{
 		const FVector& Point1  = Polygon[ j ];
 		const FVector& Point2  = Polygon[ ( j + 1 ) % Polygon.Num() ];

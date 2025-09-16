@@ -42,5 +42,5 @@ private:
 	UPROPERTY()
 	TSubclassOf< AChunk > ChunkClass;
 
-	int GenerationDistance = 8;
+	int32 GenerationDistance = 8;
 };

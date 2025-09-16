@@ -8,6 +8,7 @@
 
 #include "FactoryPlayer.generated.h"
 
+class UToolManagerComponent;
 class AFactoryPlayerController;
 class UInputAction;
 class UInputMappingContext;
@@ -23,15 +24,43 @@ public:
 
 	static AFactoryPlayer* Get( const UObject* WorldContextObject );
 
-	virtual void Tick( float DeltaSeconds ) override;
-
 	virtual void SetupPlayerInputComponent( UInputComponent* PlayerInputComponent ) override;
 
 	virtual UPawnMovementComponent* GetMovementComponent() const override { return MovementComponent; }
 
-private:
-	void UpdateInteractableData();
+protected:
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Camera" )
+	TObjectPtr< UCameraComponent > CameraComponent;
 
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Context" )
+	TObjectPtr< UInputMappingContext > InputMapping;
+
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Actions|Movement" )
+	TObjectPtr< UInputAction > MoveForwardBackwardAction;
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Actions|Movement" )
+	TObjectPtr< UInputAction > MoveRightLeftAction;
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Actions|Movement" )
+	TObjectPtr< UInputAction > MoveUpDownAction;
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Actions|Movement" )
+	TObjectPtr< UInputAction > LookRightLeftAction;
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Actions|Movement" )
+	TObjectPtr< UInputAction > LookUpDownAction;
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Actions|Movement" )
+	TObjectPtr< UInputAction > ChangeSpeedAction;
+
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Actions" )
+	TObjectPtr< UInputAction > ToggleInteractiveModeAction;
+
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Input|Actions|Interact" )
+	TObjectPtr< UInputAction > SelectInteractableAction;
+
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Movement" )
+	TObjectPtr< UPawnMovementComponent > MovementComponent;
+
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite, Category = "Tools" )
+	TObjectPtr< UToolManagerComponent > ToolManager;
+
+private:
 	void MoveForwardBackwardInput( const FInputActionInstance& Instance );
 	void MoveRightLeftInput( const FInputActionInstance& Instance );
 	void MoveUpDownInput( const FInputActionInstance& Instance );
@@ -43,38 +72,8 @@ private:
 
 	void SelectInteractableInput();
 
-	UPROPERTY( EditDefaultsOnly, Category = "Camera" )
-	TObjectPtr< UCameraComponent > CameraComponent;
-
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Context" )
-	TObjectPtr< UInputMappingContext > InputMapping;
-
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
-	TObjectPtr< UInputAction > MoveForwardBackwardAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
-	TObjectPtr< UInputAction > MoveRightLeftAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
-	TObjectPtr< UInputAction > MoveUpDownAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
-	TObjectPtr< UInputAction > LookRightLeftAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
-	TObjectPtr< UInputAction > LookUpDownAction;
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Movement" )
-	TObjectPtr< UInputAction > ChangeSpeedAction;
-
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions" )
-	TObjectPtr< UInputAction > ToggleInteractiveModeAction;
-
-	UPROPERTY( EditDefaultsOnly, Category = "Input|Actions|Interact" )
-	TObjectPtr< UInputAction > SelectInteractableAction;
-
-	UPROPERTY( EditDefaultsOnly, Category = "Movement" )
-	TObjectPtr< UPawnMovementComponent > MovementComponent;
-
 	float MouseSensitivity = .45f;
 	float SpeedMultiplier  = .5f;
 
 	bool IsInteractiveMode = false;
-
-	FHitResult InteractableData;
 };
