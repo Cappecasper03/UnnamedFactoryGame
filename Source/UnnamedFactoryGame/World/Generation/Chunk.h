@@ -54,6 +54,7 @@ private:
 	float NoiseScale = .02f;
 
 	FTimerHandle VisibilityTimer;
+	FTimerHandle LoadedTimer;
 
 	static int   StaticSize;
 	static int   StaticHeight;

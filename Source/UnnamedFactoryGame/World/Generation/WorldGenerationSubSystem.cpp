@@ -81,7 +81,7 @@ bool UWorldGenerationSubSystem::GetVoxel( const FIntVector& VoxelCoordinate, FHe
 bool UWorldGenerationSubSystem::UpdateChunk( const FIntPoint& Chunk, const bool OnlyVisibility )
 {
 	const TObjectPtr< AChunk >* ChunkActorPtr = Chunks.Find( Chunk );
-	if( ChunkActorPtr )
+	if( ChunkActorPtr && IsValid( *ChunkActorPtr ) )
 	{
 		( *ChunkActorPtr )->SetVisible();
 		return false;

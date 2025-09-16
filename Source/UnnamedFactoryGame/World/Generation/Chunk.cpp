@@ -39,6 +39,7 @@ void AChunk::SetVisible()
 {
 	ProceduralMesh->SetVisibility( true );
 	GetWorld()->GetTimerManager().SetTimer( VisibilityTimer, [ this ] { ProceduralMesh->SetVisibility( false ); }, 1, false );
+	GetWorld()->GetTimerManager().SetTimer( LoadedTimer, [ this ] { Destroy(); }, 30, false );
 }
 
 FVector AChunk::ChunkToWorld( const FIntPoint& ChunkCoordinate ) { return VoxelToWorld( FIntVector( ChunkCoordinate.X * StaticSize, ChunkCoordinate.Y * StaticSize, 0 ) ); }
