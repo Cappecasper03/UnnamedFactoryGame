@@ -8,7 +8,7 @@
 
 #include "Chunk.generated.h"
 
-class UProceduralMeshComponent;
+class UProceduralHexagonMeshComponent;
 class UHierarchicalInstancedStaticMeshComponent;
 
 UCLASS( Abstract )
@@ -35,35 +35,6 @@ public:
 
 private:
 	void GenerateVoxels();
-	void GenerateMesh( const TMap< FIntVector, FHexagonVoxel >& HexagonVoxels );
-
-	void GenerateMeshRegions( TMap< int32, TArray< FIntPoint > >& VisibleVoxelCoordinates,
-	                          bool                                IsTop,
-	                          TArray< FVector >&                  OutVertices,
-	                          TArray< int32 >&                    OutTriangles,
-	                          TArray< FVector >&                  OutNormals,
-	                          TArray< FVector2D >&                OutUVs ) const;
-	void GenerateMeshRegions( TMap< FIntVector, TArray< int32 > >& VisibleVoxelCoordinates,
-	                          TArray< FVector >&                   OutVertices,
-	                          TArray< int32 >&                     OutTriangles,
-	                          TArray< FVector >&                   OutNormals,
-	                          TArray< FVector2D >&                 OutUVs ) const;
-
-	void GenerateMeshPolygon( int32                PolygonHeight,
-	                          TArray< FIntPoint >& Region,
-	                          bool                 IsTop,
-	                          TArray< FVector >&   OutVertices,
-	                          TArray< int32 >&     OutTriangles,
-	                          TArray< FVector >&   OutNormals,
-	                          TArray< FVector2D >& OutUVs ) const;
-	void GenerateMeshPolygon( const FIntVector&    PolygonCoordinate,
-	                          TArray< int32 >&     Region,
-	                          TArray< FVector >&   OutVertices,
-	                          TArray< int32 >&     OutTriangles,
-	                          TArray< FVector >&   OutNormals,
-	                          TArray< FVector2D >& OutUVs ) const;
-
-	float Signed2DPolygonArea( const TArray< FVector >& Polygon ) const;
 
 	static bool GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FIntVector& VoxelCoordinate, FHexagonVoxel& OutVoxel );
 	static bool GetVoxel( const TMap< FIntVector, FHexagonVoxel >& Map, const FVector& WorldLocation, FHexagonVoxel& OutVoxel );
@@ -73,7 +44,7 @@ private:
 	FIntPoint Coordinate = FIntPoint::ZeroValue;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Chunk" )
-	TObjectPtr< UProceduralMeshComponent > ProceduralMesh;
+	TObjectPtr< UProceduralHexagonMeshComponent > ProceduralMesh;
 
 	UPROPERTY( EditDefaultsOnly, Category = "Chunk" )
 	int Size = 16;

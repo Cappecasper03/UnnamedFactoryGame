@@ -39,7 +39,7 @@ bool UNavigationComponent::CalculatePath( const FVector& TargetLocation, TArray<
 	FVoxelNode CurrentNode{ .Coordinate = StartVoxel.GridLocation };
 	OpenNodes.HeapPush( CurrentNode );
 
-	const TArray Directions = {
+	const TArray NavigationDirections = {
 		FIntVector( 1, -1, 0 ), FIntVector( 1, 0, 0 ),  FIntVector( 0, 1, 0 ), FIntVector( -1, 1, 0 ),
 		FIntVector( -1, 0, 0 ), FIntVector( 0, -1, 0 ), FIntVector( 0, 0, 1 ), FIntVector( 0, 0, -1 ),
 	};
@@ -59,7 +59,7 @@ bool UNavigationComponent::CalculatePath( const FVector& TargetLocation, TArray<
 
 		ClosedNodes.Add( CurrentNode );
 
-		for( const FIntVector& Direction: Directions )
+		for( const FIntVector& Direction: NavigationDirections )
 		{
 			FVoxelNode NeighborNode{ .Coordinate = CurrentNode.Coordinate + Direction };
 
@@ -81,7 +81,7 @@ bool UNavigationComponent::CalculatePath( const FVector& TargetLocation, TArray<
 				bool IsValid = false;
 				for( int i = 0; i < 6; ++i )
 				{
-					const FIntVector& BelowDirection = Directions[ i ];
+					const FIntVector& BelowDirection = NavigationDirections[ i ];
 
 					if( !WorldGenerationSubSystem->GetVoxel( NeighborNode.Coordinate - FIntVector( 0, 0, 1 ) + BelowDirection, Voxel ) || Voxel.Type == EVoxelType::Air )
 						continue;
