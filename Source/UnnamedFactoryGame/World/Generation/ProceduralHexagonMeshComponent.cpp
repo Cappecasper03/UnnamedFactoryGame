@@ -254,7 +254,7 @@ void UProceduralHexagonMeshComponent::GeneratePolygon( const int32          Poly
 
 	for( TArray< FVector >& InnerPolygon: Polygons )
 	{
-		if( Signed2DPolygonArea( InnerPolygon ) > 0 )
+		if( Signed2DPolygonArea( InnerPolygon ) < 0 )
 			Algo::Reverse( InnerPolygon );
 
 		int32 MainBridgeIndex  = -1;
