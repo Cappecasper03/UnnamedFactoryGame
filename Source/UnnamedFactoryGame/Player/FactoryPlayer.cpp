@@ -10,6 +10,7 @@
 #include "GameFramework/PawnMovementComponent.h"
 #include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
+#include "Tools/BaseToolComponent.h"
 #include "Tools/ToolManagerComponent.h"
 #include "UnnamedFactoryGame/UnnamedFactoryGame.h"
 #include "UnnamedFactoryGame/World/Generation/Chunk.h"
@@ -129,7 +130,14 @@ void AFactoryPlayer::ChangeSpeedInput( const FInputActionInstance& Instance )
 {
 	const float Value = Instance.GetValue().Get< float >();
 
-	if( IsInteractiveMode ) {}
+	if( IsInteractiveMode )
+	{
+		const TObjectPtr< UBaseToolComponent > Tool = ToolManager->GetActiveTool();
+		if( !Tool )
+			return;
+
+		Tool->UpdateSize( Value );
+	}
 	else
 	{
 		SpeedMultiplier += Value / 10;

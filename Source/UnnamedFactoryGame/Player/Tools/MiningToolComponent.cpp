@@ -24,8 +24,10 @@ void UMiningToolComponent::TickComponent( const float DeltaTime, const ELevelTic
 	MeshComponent->SetWorldLocation( FHexagonVoxel( Coordinate ).WorldLocation );
 }
 
-void UMiningToolComponent::UpdateVisualization() const
+void UMiningToolComponent::UpdateSize( const int32 SizeChange )
 {
+	Radius = FMath::Clamp( Radius + SizeChange, MinRadius, MaxRadius );
+
 	TMap< FIntVector, FHexagonVoxel > HexagonVoxels;
 
 	FIntVector    VoxelCoordinate = FIntVector::ZeroValue;
@@ -48,7 +50,7 @@ void UMiningToolComponent::UpdateVisualization() const
 				HexagonVoxels.Add( VoxelCoordinate, Voxel );
 				Queue.Enqueue( MakeTuple( Current.Key + 1, VoxelCoordinate ) );
 			}
-			else if( Direction.Z == 0 )
+			else if( Current.Key == Radius && Direction.Z == 0 )
 				HexagonVoxels.Add( VoxelCoordinate, Voxel );
 		}
 	}
@@ -73,7 +75,7 @@ void UMiningToolComponent::Activate( const bool bReset )
 	if( IsValid( Material ) )
 		MeshComponent->SetMaterial( 0, Material );
 
-	UpdateVisualization();
+	UpdateSize( 0 );
 }
 
 void UMiningToolComponent::Deactivate()

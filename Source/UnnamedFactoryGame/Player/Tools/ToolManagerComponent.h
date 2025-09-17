@@ -24,13 +24,12 @@ class UNNAMEDFACTORYGAME_API UToolManagerComponent : public UActorComponent
 public:
 	UToolManagerComponent();
 
+	const TObjectPtr< UBaseToolComponent >& GetActiveTool() { return ActiveTool; }
+
 	UFUNCTION( BlueprintCallable )
 	void ToggleTool( EToolType ToolType );
 
-	UFUNCTION( BlueprintCallable )
 	void ActivateTool( EToolType ToolType );
-
-	UFUNCTION( BlueprintCallable )
 	void DeactivateTool();
 
 protected:

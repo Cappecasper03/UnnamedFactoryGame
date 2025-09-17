@@ -19,7 +19,7 @@ public:
 
 	virtual void TickComponent( float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction ) override;
 
-	void UpdateVisualization() const;
+	virtual void UpdateSize( int32 SizeChange ) override;
 
 protected:
 	virtual void Activate( bool bReset = false ) override;
@@ -31,5 +31,7 @@ protected:
 	UPROPERTY()
 	TObjectPtr< UMaterial > Material;
 
-	int32 Radius = 3;
+	int32 Radius    = 3;
+	int32 MinRadius = 1;
+	int32 MaxRadius = 5;
 };

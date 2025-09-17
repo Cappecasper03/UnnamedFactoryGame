@@ -19,6 +19,8 @@ public:
 
 	virtual void TickComponent( float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction ) override;
 
+	virtual void UpdateSize( int32 SizeChange ) {}
+
 protected:
 	FHitResult InteractableData;
 };
