@@ -29,7 +29,7 @@ protected:
 	TObjectPtr< UProceduralHexagonMeshComponent > MeshComponent;
 
 	UPROPERTY()
-	TObjectPtr< UMaterial > HologramMaterial;
+	TObjectPtr< UMaterial > Material;
 
 	int32 Radius = 3;
 };

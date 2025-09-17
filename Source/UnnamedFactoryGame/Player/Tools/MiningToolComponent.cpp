@@ -8,9 +8,9 @@ UMiningToolComponent::UMiningToolComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 
-	static ConstructorHelpers::FObjectFinder< UMaterial > MaterialFinder( TEXT( "/Game/Art/Materials/Hologram_M" ) );
+	static ConstructorHelpers::FObjectFinder< UMaterial > MaterialFinder( TEXT( "/Game/Art/Materials/MiningTool_M" ) );
 	if( MaterialFinder.Succeeded() )
-		HologramMaterial = MaterialFinder.Object;
+		Material = MaterialFinder.Object;
 }
 
 void UMiningToolComponent::TickComponent( const float DeltaTime, const ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction )
@@ -70,8 +70,8 @@ void UMiningToolComponent::Activate( const bool bReset )
 
 	MeshComponent->RegisterComponent();
 
-	if( IsValid( HologramMaterial ) )
-		MeshComponent->SetMaterial( 0, HologramMaterial );
+	if( IsValid( Material ) )
+		MeshComponent->SetMaterial( 0, Material );
 
 	UpdateVisualization();
 }

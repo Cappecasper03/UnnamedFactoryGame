@@ -42,7 +42,7 @@ FIntVector FHexagonVoxel::WorldToVoxel( const FVector& WorldLocation )
 	FIntVector Coordinate;
 	Coordinate.X = FinalQ;
 	Coordinate.Y = FinalR;
-	Coordinate.Z = FMath::RoundToInt( WorldLocation.Z / HexagonHeight );
+	Coordinate.Z = FMath::FloorToInt( WorldLocation.Z / HexagonHeight );
 	return Coordinate;
 }
 
